@@ -1,12 +1,14 @@
 from fastapi import FastAPI, HTTPException
 
 from app.firebase import db
-from app.routers import account, entries
+from app.routers import account, entries,legacy, policy
 
 app = FastAPI(title="Eternita Backend")
 
 app.include_router(account.router)
 app.include_router(entries.router)
+app.include_router(legacy.router)
+app.include_router(policy.router)
 
 @app.get("/")
 def health():
