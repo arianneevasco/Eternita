@@ -26,10 +26,20 @@ class AccessEvaluator:
             )
 
         self.prolog = Prolog()
+
+        self._clear_policy_facts()
         self.prolog.consult(str(RULES_PATH))
 
         for fact in facts:
             self._assert_fact(fact)
+
+    def _clear_policy_facts(self):
+        for predicate in ("allow", "deny", "release"):
+            list(
+                self.prolog.query(
+                    f"retractall({predicate}(_,_,_))"
+                )
+            )
 
     def _assert_fact(self, fact: str):
         cleaned = fact.strip()
