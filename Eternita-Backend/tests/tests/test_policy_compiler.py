@@ -62,29 +62,52 @@ def test_default_mode():
     assert compiled["schema_version"] == 1
 
 
-def test_custody_transfer_is_declared_without_granting_access():
+def test_custody_declaration_is_recorded():
     compiled = compile_policy(
-        "protocol maria: transfer custody to juan"
+        '''
+protocol maria:
+    transfer custody to juan
+'''
     )
 
-    assert compiled["custody_transfers"] == [{
+    assert compiled["custody_declarations"] == [{
         "to": "juan",
         "conditions": [],
         "status": "declared",
     }]
-    assert compiled["facts"] == []
-
-
-def test_conditional_custody_transfer_is_compiled():
+def test_custody_condition_is_recorded():
     compiled = compile_policy(
-        "protocol maria: transfer custody to juan if trustee_unavailable"
+        '''
+protocol maria:
+    transfer custody to juan if trustee_unavailable
+'''
     )
 
-    assert compiled["custody_transfers"] == [{
+    assert compiled["custody_declarations"] == [{
         "to": "juan",
         "conditions": ["trustee_unavailable"],
         "status": "declared",
     }]
+
+
+def test_custody_to_self_is_rejected():
+    with pytest.raises(
+        PolicySyntaxError,
+        match="must not be the owner",
+    ):
+        compile_policy('''
+protocol maria:
+    transfer custody to maria
+''')
+
+
+def test_custody_does_not_create_permission_fact():
+    compiled = compile_policy('''
+protocol maria:
+    transfer custody to juan
+''')
+
+    assert compiled["facts"] == []
 
 
 def test_missing_mode_defaults_to_verbatim():

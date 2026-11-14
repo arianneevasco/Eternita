@@ -8,6 +8,7 @@ from app.policy.parser import Custody, Mode, Release, See, parse
 
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,30}$")
 SUPPORTED_MODES = {"verbatim", "light_fix", "review"}
+SUPPORTED_CUSTODY_CONDITIONS = {"trustee_unavailable"}
 
 
 def checked_name(value: str, line: int) -> str:
@@ -42,7 +43,7 @@ def compile_policy(source: str) -> dict:
     seen_facts = set()
     releases = []
     release_keys = set()
-    custody_transfers = []
+    custody_declarations = []
     default_mode = None
 
     def add_fact(fact: str):
@@ -127,7 +128,20 @@ def compile_policy(source: str) -> dict:
                     statement.line,
                 )
 
-                custody_transfers.append({
+                if recipient == viewer:
+                    raise PolicySyntaxError(
+                        f"line {statement.line}: custody recipient "
+                        "must not be the owner"
+                    )
+
+                for condition in statement.conditions:
+                    if condition not in SUPPORTED_CUSTODY_CONDITIONS:
+                        raise PolicySyntaxError(
+                            f"line {statement.line}: unsupported "
+                            "custody condition"
+                        )
+
+                custody_declarations.append({
                     "to": recipient,
                     "conditions": list(statement.conditions),
                     "status": "declared",
@@ -161,6 +175,6 @@ def compile_policy(source: str) -> dict:
         "schema_version": 1,
         "facts": facts,
         "releases": releases,
-        "custody_transfers": custody_transfers,
+        "custody_declarations": custody_declarations,
         "default_mode": default_mode,
     }

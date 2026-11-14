@@ -69,18 +69,26 @@ def test_default_mode():
     assert rule.mode == "verbatim"
 
 
-def test_custody_transfer():
-    rule = parse("protocol maria: transfer custody to juan")[0].stmts[0]
+def test_simple_custody_transfer():
+    protocols = parse('''
+protocol maria:
+    transfer custody to juan
+''')
+
+    rule = protocols[0].stmts[0]
 
     assert isinstance(rule, Custody)
     assert rule.to == "juan"
     assert rule.conditions == ()
 
 
-def test_conditional_custody_transfer():
-    rule = parse(
-        "protocol maria: transfer custody to juan if trustee_unavailable"
-    )[0].stmts[0]
+def test_custody_transfer_with_condition():
+    protocols = parse('''
+protocol maria:
+    transfer custody to juan if trustee_unavailable
+''')
+
+    rule = protocols[0].stmts[0]
 
     assert isinstance(rule, Custody)
     assert rule.conditions == ("trustee_unavailable",)
@@ -91,7 +99,10 @@ def test_unknown_custody_condition_is_rejected():
         PolicySyntaxError,
         match="unsupported custody condition",
     ):
-        parse("protocol maria: transfer custody to juan if owner_dies")
+        parse('''
+protocol maria:
+    transfer custody to juan if owner_dies
+''')
 
 
 def test_multiple_protocols():
