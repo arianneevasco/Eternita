@@ -62,6 +62,31 @@ def test_default_mode():
     assert compiled["schema_version"] == 1
 
 
+def test_custody_transfer_is_declared_without_granting_access():
+    compiled = compile_policy(
+        "protocol maria: transfer custody to juan"
+    )
+
+    assert compiled["custody_transfers"] == [{
+        "to": "juan",
+        "conditions": [],
+        "status": "declared",
+    }]
+    assert compiled["facts"] == []
+
+
+def test_conditional_custody_transfer_is_compiled():
+    compiled = compile_policy(
+        "protocol maria: transfer custody to juan if trustee_unavailable"
+    )
+
+    assert compiled["custody_transfers"] == [{
+        "to": "juan",
+        "conditions": ["trustee_unavailable"],
+        "status": "declared",
+    }]
+
+
 def test_missing_mode_defaults_to_verbatim():
     compiled = compile_policy('''
 protocol maria:

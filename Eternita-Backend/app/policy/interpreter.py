@@ -3,7 +3,7 @@ import re
 import unicodedata
 
 from app.errors import PolicySyntaxError
-from app.policy.parser import Mode, Release, See, parse
+from app.policy.parser import Custody, Mode, Release, See, parse
 
 
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,30}$")
@@ -42,6 +42,7 @@ def compile_policy(source: str) -> dict:
     seen_facts = set()
     releases = []
     release_keys = set()
+    custody_transfers = []
     default_mode = None
 
     def add_fact(fact: str):
@@ -120,6 +121,18 @@ def compile_policy(source: str) -> dict:
                     "date": release_date.isoformat(),
                 })
 
+            elif isinstance(statement, Custody):
+                recipient = checked_name(
+                    statement.to,
+                    statement.line,
+                )
+
+                custody_transfers.append({
+                    "to": recipient,
+                    "conditions": list(statement.conditions),
+                    "status": "declared",
+                })
+
             elif isinstance(statement, Mode):
                 if statement.mode not in SUPPORTED_MODES:
                     raise PolicySyntaxError(
@@ -148,5 +161,6 @@ def compile_policy(source: str) -> dict:
         "schema_version": 1,
         "facts": facts,
         "releases": releases,
+        "custody_transfers": custody_transfers,
         "default_mode": default_mode,
     }

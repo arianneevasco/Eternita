@@ -33,7 +33,14 @@ class Mode:
     line: int
 
 
-Statement = See | Release | Mode
+@dataclass(frozen=True)
+class Custody:
+    to: str
+    conditions: tuple[str, ...]
+    line: int
+
+
+Statement = See | Release | Mode | Custody
 
 
 @dataclass(frozen=True)
@@ -160,6 +167,9 @@ class Parser:
         if self.is_word("default"):
             return self.mode()
 
+        if self.is_word("transfer"):
+            return self.custody()
+
         found = self.peek().value or "end of policy"
         self.fail(
             f"unsupported statement starting with {found!r}"
@@ -264,6 +274,33 @@ class Parser:
 
         return Mode(
             mode=mode.value,
+            line=start.line,
+        )
+
+    def custody(self):
+        start = self.peek()
+
+        self.word("transfer", "custody", "to")
+        recipient = self.name()
+
+        conditions = []
+
+        while self.is_word("if"):
+            self.advance()
+            condition = self.take("WORD")
+
+            if condition.value != "trustee_unavailable":
+                self.fail(
+                    "unsupported custody condition; "
+                    "only 'trustee_unavailable' is accepted",
+                    condition.line,
+                )
+
+            conditions.append(condition.value)
+
+        return Custody(
+            to=recipient,
+            conditions=tuple(conditions),
             line=start.line,
         )
 

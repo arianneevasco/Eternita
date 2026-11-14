@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from app.errors import PolicySyntaxError
-from app.policy.parser import Mode, Release, See, parse
+from app.policy.parser import Custody, Mode, Release, See, parse
 
 
 POLICY = '''
@@ -69,6 +69,31 @@ def test_default_mode():
     assert rule.mode == "verbatim"
 
 
+def test_custody_transfer():
+    rule = parse("protocol maria: transfer custody to juan")[0].stmts[0]
+
+    assert isinstance(rule, Custody)
+    assert rule.to == "juan"
+    assert rule.conditions == ()
+
+
+def test_conditional_custody_transfer():
+    rule = parse(
+        "protocol maria: transfer custody to juan if trustee_unavailable"
+    )[0].stmts[0]
+
+    assert isinstance(rule, Custody)
+    assert rule.conditions == ("trustee_unavailable",)
+
+
+def test_unknown_custody_condition_is_rejected():
+    with pytest.raises(
+        PolicySyntaxError,
+        match="unsupported custody condition",
+    ):
+        parse("protocol maria: transfer custody to juan if owner_dies")
+
+
 def test_multiple_protocols():
     source = '''
 protocol maria:
@@ -95,7 +120,6 @@ protocol juan:
         'protocol maria: may read summary of entries tagged "Family Trip"',
         "protocol maria: default writing mode: automatic",
         'protocol maria: release letter "Letter" to maria when date 2040-05-01',
-        "protocol maria: transfer custody to juan",
         "protocol maria: may read full entries mentioning maria",
         (
             "protocol maria: may see existence of entries mentioning maria "
