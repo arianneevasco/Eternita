@@ -11,7 +11,10 @@ import {
 } from "@nestjs/common";
 import { DiaryService } from "./diary.service";
 import { AuthGuard } from "../auth/auth.guard";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import {
+  createEntrySchema,
+  editEntrySchema,
   CreateEntryDto,
   EditEntryDto,
 } from "./dto";
@@ -24,9 +27,10 @@ export class DiaryController {
   ) {}
 
   @Post()
-  async create(
+  create(
     @Req() request: any,
-    @Body() body: CreateEntryDto
+    @Body(new ZodValidationPipe(createEntrySchema))
+    body: CreateEntryDto
   ) {
     return this.diaryService.createEntry(
       request.uid,
@@ -35,12 +39,12 @@ export class DiaryController {
   }
 
   @Get()
-  async list(@Req() request: any) {
+  list(@Req() request: any) {
     return this.diaryService.listEntries(request.uid);
   }
 
   @Get(":entryId")
-  async getOne(
+  getOne(
     @Req() request: any,
     @Param("entryId") entryId: string
   ) {
@@ -51,10 +55,11 @@ export class DiaryController {
   }
 
   @Patch(":entryId")
-  async edit(
+  edit(
     @Req() request: any,
     @Param("entryId") entryId: string,
-    @Body() body: EditEntryDto
+    @Body(new ZodValidationPipe(editEntrySchema))
+    body: EditEntryDto
   ) {
     return this.diaryService.editEntry(
       request.uid,
@@ -64,7 +69,7 @@ export class DiaryController {
   }
 
   @Patch(":entryId/favorite")
-  async favorite(
+  favorite(
     @Req() request: any,
     @Param("entryId") entryId: string,
     @Body() body: { isFavorite: boolean }
@@ -77,7 +82,7 @@ export class DiaryController {
   }
 
   @Delete(":entryId")
-  async hide(
+  hide(
     @Req() request: any,
     @Param("entryId") entryId: string
   ) {
@@ -88,7 +93,7 @@ export class DiaryController {
   }
 
   @Get(":entryId/versions")
-  async versions(
+  versions(
     @Req() request: any,
     @Param("entryId") entryId: string
   ) {

@@ -1,0 +1,31 @@
+import {
+  ArgumentMetadata,
+  BadRequestException,
+  Injectable,
+  PipeTransform,
+} from "@nestjs/common";
+import { ZodSchema } from "zod";
+
+@Injectable()
+export class ZodValidationPipe implements PipeTransform {
+  constructor(
+    private readonly schema: ZodSchema
+  ) {}
+
+  transform(value: unknown, metadata: ArgumentMetadata) {
+    if (metadata.type !== "body") {
+      return value;
+    }
+
+    const result = this.schema.safeParse(value);
+
+    if (!result.success) {
+      throw new BadRequestException({
+        message: "Invalid request data",
+        errors: result.error.flatten().fieldErrors,
+      });
+    }
+
+    return result.data;
+  }
+}

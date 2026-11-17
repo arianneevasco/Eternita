@@ -1,11 +1,13 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { getDb } from "../config/firebase";
-import { HashChainService, GENESIS_HASH } from "./hash-chain.service";
+import {
+  HashChainService,
+  GENESIS_HASH,
+} from "./hash-chain.service";
 import {
   CreateEntryDto,
   EditEntryDto,
@@ -32,15 +34,15 @@ export class DiaryService {
 
   async createEntry(uid: string, dto: CreateEntryDto) {
     const db = getDb();
-    const entryId = db.collection("ids").doc().id;
 
-    const content = entryContentSchema.parse({
-      ...dto,
-      finalText: dto.originalText,
-    });
+    const content = entryContentSchema.parse(dto);
+
+    const entryRef = this.entriesRef(uid).doc();
+    const entryId = entryRef.id;
 
     const version = 1;
     const previousHash = GENESIS_HASH;
+
     const entryHash = this.hashChain.createHash(
       previousHash,
       entryId,
@@ -55,6 +57,8 @@ export class DiaryService {
       finalText: content.originalText,
       isHidden: false,
       currentVersion: version,
+      previousHash,
+      entryHash,
       createdAt: now,
       updatedAt: now,
     };
@@ -68,18 +72,32 @@ export class DiaryService {
       createdAt: now,
     };
 
-    await this.entriesRef(uid).doc(entryId).set(entryData);
-    await this.versionsRef(uid).doc(entryId).collection("versions").doc(String(version)).set(versionData);
+    const batch = db.batch();
 
-    await this.ownerRef(uid).update({
-      lastSeq: version,
-      lastHash: entryHash,
-    });
+    batch.set(entryRef, entryData);
+
+    batch.set(
+      this.versionsRef(uid)
+        .doc(entryId)
+        .collection("versions")
+        .doc(String(version)),
+      versionData
+    );
+
+    batch.set(
+      this.ownerRef(uid),
+      {
+        lastSeq: version,
+        lastHash: entryHash,
+      },
+      { merge: true }
+    );
+
+    await batch.commit();
 
     return {
       id: entryId,
       ...entryData,
-      entryHash,
     };
   }
 
@@ -104,7 +122,9 @@ export class DiaryService {
   }
 
   async getEntry(uid: string, entryId: string) {
-    const snapshot = await this.entriesRef(uid).doc(entryId).get();
+    const snapshot = await this.entriesRef(uid)
+      .doc(entryId)
+      .get();
 
     if (!snapshot.exists) {
       throw new NotFoundException("Entry not found");
@@ -127,14 +147,16 @@ export class DiaryService {
     entryId: string,
     dto: EditEntryDto
   ) {
+    const db = getDb();
     const entryRef = this.entriesRef(uid).doc(entryId);
-    const snapshot = await entryRef.get();
 
-    if (!snapshot.exists) {
+    const entrySnapshot = await entryRef.get();
+
+    if (!entrySnapshot.exists) {
       throw new NotFoundException("Entry not found");
     }
 
-    const current = snapshot.data() as any;
+    const current = entrySnapshot.data() as any;
 
     if (current.isHidden) {
       throw new NotFoundException("Entry not found");
@@ -146,7 +168,25 @@ export class DiaryService {
       );
     }
 
-    const nextVersion = current.currentVersion + 1;
+    const versionsRef = this.versionsRef(uid)
+      .doc(entryId)
+      .collection("versions");
+
+    const latestVersionSnapshot = await versionsRef
+      .orderBy("version", "desc")
+      .limit(1)
+      .get();
+
+    if (latestVersionSnapshot.empty) {
+      throw new Error(
+        "Entry version history is missing"
+      );
+    }
+
+    const latestVersion = latestVersionSnapshot.docs[0].data() as any;
+
+    const nextVersion = latestVersion.version + 1;
+    const previousHash = latestVersion.entryHash;
 
     const updatedContent = {
       ...current,
@@ -155,8 +195,6 @@ export class DiaryService {
     };
 
     const validated = entryContentSchema.parse(updatedContent);
-
-    const previousHash = current.entryHash;
 
     const entryHash = this.hashChain.createHash(
       previousHash,
@@ -176,27 +214,37 @@ export class DiaryService {
       createdAt: now,
     };
 
-    await this.versionsRef(uid)
-      .doc(entryId)
-      .collection("versions")
-      .doc(String(nextVersion))
-      .set(versionData);
+    const batch = db.batch();
 
-    await entryRef.update({
+    batch.set(
+      versionsRef.doc(String(nextVersion)),
+      versionData
+    );
+
+    batch.update(entryRef, {
       ...validated,
       currentVersion: nextVersion,
+      previousHash,
+      entryHash,
       updatedAt: now,
     });
 
-    await this.ownerRef(uid).update({
-      lastSeq: nextVersion,
-      lastHash: entryHash,
-    });
+    batch.set(
+      this.ownerRef(uid),
+      {
+        lastSeq: nextVersion,
+        lastHash: entryHash,
+      },
+      { merge: true }
+    );
+
+    await batch.commit();
 
     return {
       id: entryId,
       ...validated,
       currentVersion: nextVersion,
+      previousHash,
       entryHash,
     };
   }
@@ -238,6 +286,14 @@ export class DiaryService {
   }
 
   async listVersions(uid: string, entryId: string) {
+    const entrySnapshot = await this.entriesRef(uid)
+      .doc(entryId)
+      .get();
+
+    if (!entrySnapshot.exists) {
+      throw new NotFoundException("Entry not found");
+    }
+
     const snapshot = await this.versionsRef(uid)
       .doc(entryId)
       .collection("versions")
