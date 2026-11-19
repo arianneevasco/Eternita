@@ -7,7 +7,7 @@ Eternita (Alaala) is a privacy-controlled personal AI diary. The owner can write
 1. ARIANNE EVASCO
 2. LEA MARIE GOZARIN
 3. LYZA GWEN GUATNO
-4. LOVELY MONTANO
+4. LOVELY MONTAÑO
 
 ## Repository Structure
 
