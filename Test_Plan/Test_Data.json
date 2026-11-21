@@ -1,0 +1,320 @@
+{
+  "dataset_name": "Alaala synthetic QA dataset",
+  "notice": "All people, events, businesses, and details in this dataset are fictional and created only for testing. Do not replace with real diary data.",
+  "owner": {
+    "id": "OWNER-001",
+    "name": "Elias Navarro",
+    "account_type": "main_user"
+  },
+  "second_user": {
+    "id": "USER-002",
+    "name": "Maria Santos",
+    "relationship": "registered trusted person (fictional)",
+    "access_mode": "read_only"
+  },
+  "test_state": {
+    "death_trigger": "fired_for_legacy_access_tests",
+    "policy_frozen": true,
+    "letter_release_date": "2040-05-01",
+    "test_clock_cases": [
+      "2040-04-30",
+      "2040-05-01",
+      "2040-05-02"
+    ]
+  },
+  "access_policy_summary": {
+    "default": "deny",
+    "conflict_resolution": "deny_beats_allow",
+    "maria_allowed_tags": [
+      "family"
+    ],
+    "maria_denied_tags": [
+      "business",
+      "personal",
+      "health",
+      "travel"
+    ],
+    "second_user_can_edit": false,
+    "letter_requires_release_date": true
+  },
+  "entries": [
+    {
+      "id": "E001",
+      "date": "2021-06-12",
+      "time": "08:30",
+      "journal": "Personal",
+      "title": "A new notebook",
+      "content": "I started a notebook for small memories. I want to keep ordinary days, not only special occasions.",
+      "tags": [
+        "personal",
+        "reflection"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E002",
+      "date": "2022-02-05",
+      "time": "17:10",
+      "journal": "Family",
+      "title": "Sunday lunch",
+      "content": "We shared vegetable soup and rice at home. The best part was everyone staying at the table to talk.",
+      "tags": [
+        "family",
+        "home",
+        "memory"
+      ],
+      "visibility": "selected_family"
+    },
+    {
+      "id": "E003",
+      "date": "2022-08-19",
+      "time": "19:00",
+      "journal": "Family",
+      "title": "A story from childhood",
+      "content": "I told Mira the story about the paper boat I made during a rainy afternoon. She asked me to tell it again.",
+      "tags": [
+        "family",
+        "Mira",
+        "childhood"
+      ],
+      "visibility": "selected_family"
+    },
+    {
+      "id": "E004",
+      "date": "2023-01-14",
+      "time": "09:20",
+      "journal": "Business",
+      "title": "Workshop idea",
+      "content": "I drafted an idea for a small repair workshop with clear pricing and a simple appointment book.",
+      "tags": [
+        "business",
+        "planning"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E005",
+      "date": "2023-04-03",
+      "time": "16:45",
+      "journal": "Family",
+      "title": "Mira's school project",
+      "content": "Mira showed me her cardboard model. I liked how she explained each part and how she kept trying when one piece fell off.",
+      "tags": [
+        "family",
+        "Mira",
+        "school"
+      ],
+      "visibility": "selected_family"
+    },
+    {
+      "id": "E006",
+      "date": "2023-07-22",
+      "time": "11:15",
+      "journal": "Personal",
+      "title": "A quiet morning",
+      "content": "I walked through the neighborhood before the day became busy. The cool air helped me think clearly.",
+      "tags": [
+        "personal",
+        "routine"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E007",
+      "date": "2023-10-09",
+      "time": "14:00",
+      "journal": "Business",
+      "title": "Supplier comparison",
+      "content": "I compared three fictional supplier quotes for tools. I need to review delivery terms before choosing one.",
+      "tags": [
+        "business",
+        "operations",
+        "private"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E008",
+      "date": "2024-01-01",
+      "time": "10:00",
+      "journal": "Family",
+      "title": "New year wishes",
+      "content": "We wrote one hope each for the new year. Mira hopes to learn how to draw buildings.",
+      "tags": [
+        "family",
+        "Mira",
+        "new-year"
+      ],
+      "visibility": "selected_family"
+    },
+    {
+      "id": "E009",
+      "date": "2024-03-16",
+      "time": "18:30",
+      "journal": "Business",
+      "title": "First practice day",
+      "content": "I tested the workshop layout with a few sample tools. The workbench needs better lighting.",
+      "tags": [
+        "business",
+        "testing"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E010",
+      "date": "2024-05-28",
+      "time": "20:05",
+      "journal": "Family",
+      "title": "A difficult day, a kind conversation",
+      "content": "Today felt tiring. A calm conversation at home reminded me to listen before trying to solve everything.",
+      "tags": [
+        "family",
+        "reflection",
+        "emotions"
+      ],
+      "visibility": "selected_family"
+    },
+    {
+      "id": "E011",
+      "date": "2024-08-11",
+      "time": "07:50",
+      "journal": "Travel",
+      "title": "A day by the coast",
+      "content": "The sea was calm in the morning. I collected a smooth stone and brought it home as a small reminder of the trip.",
+      "tags": [
+        "travel",
+        "memory"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E012",
+      "date": "2024-11-02",
+      "time": "15:25",
+      "journal": "Business",
+      "title": "Monthly expense review",
+      "content": "I reviewed the fictional workshop expenses and noticed that packaging costs were higher than expected.",
+      "tags": [
+        "business",
+        "finance",
+        "private"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E013",
+      "date": "2025-02-14",
+      "time": "18:10",
+      "journal": "Family",
+      "title": "A handmade card",
+      "content": "Mira made a card with a blue paper star. I kept it inside the notebook because the message made me smile.",
+      "tags": [
+        "family",
+        "Mira",
+        "keepsake"
+      ],
+      "visibility": "selected_family"
+    },
+    {
+      "id": "E014",
+      "date": "2025-04-20",
+      "time": "09:40",
+      "journal": "Personal",
+      "title": "A lesson about patience",
+      "content": "Some plans take longer than expected. I am learning to measure progress by steady effort, not only quick results.",
+      "tags": [
+        "personal",
+        "lesson"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E015",
+      "date": "2025-06-07",
+      "time": "13:35",
+      "journal": "Business",
+      "title": "A possible partnership",
+      "content": "I considered a small partnership for the workshop, but I have not made a decision. Keep this note private until I decide.",
+      "tags": [
+        "business",
+        "planning",
+        "confidential"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E016",
+      "date": "2025-09-13",
+      "time": "17:55",
+      "journal": "Family",
+      "title": "Cooking together",
+      "content": "We prepared noodles together. Mira measured the ingredients and reminded me not to rush the sauce.",
+      "tags": [
+        "family",
+        "Mira",
+        "home"
+      ],
+      "visibility": "selected_family"
+    },
+    {
+      "id": "E017",
+      "date": "2025-12-31",
+      "time": "21:00",
+      "journal": "Personal",
+      "title": "Year-end reflection",
+      "content": "This year had changes and unfinished plans. I am grateful for the conversations that helped me keep going.",
+      "tags": [
+        "personal",
+        "reflection",
+        "year-end"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E018",
+      "date": "2026-03-08",
+      "time": "12:20",
+      "journal": "Business",
+      "title": "Workshop checklist",
+      "content": "Before opening the workshop, I need to check the tool inventory, safety signs, booking process, and maintenance schedule.",
+      "tags": [
+        "business",
+        "operations",
+        "checklist"
+      ],
+      "visibility": "owner_only"
+    },
+    {
+      "id": "E019",
+      "date": "2026-05-01",
+      "time": "08:00",
+      "journal": "Family",
+      "title": "A message for a future day",
+      "content": "This is a reminder that meaningful memories are often made during ordinary days. Keep asking questions and stay curious.",
+      "tags": [
+        "family",
+        "Mira",
+        "future-message"
+      ],
+      "visibility": "scheduled_release",
+      "release_date": "2040-05-01"
+    },
+    {
+      "id": "E020",
+      "date": "2026-06-18",
+      "time": "22:00",
+      "journal": "Family",
+      "title": "Letter to my daughter",
+      "content": "Dear Mira, I hope you keep your curiosity and kindness as you grow. You do not need to have every answer today. Take your time, learn from mistakes, and remember that your small efforts matter. When life feels difficult, ask for help and give yourself room to begin again. I am proud of the person you are becoming. With love, Elias.",
+      "tags": [
+        "family",
+        "Mira",
+        "letter",
+        "scheduled-release"
+      ],
+      "visibility": "scheduled_release",
+      "release_date": "2040-05-01",
+      "writing_mode": "verbatim"
+    }
+  ]
+}
