@@ -97,6 +97,50 @@ test: add policy compiler tests
 chore: update backend dependencies
 ```
 
+## Frontend Development
+
+The frontend is a React Native app built with Expo and TypeScript. It is designed to run on Android, iOS, and the web. Expo Router uses files in `eternita-frontend/src/app/` for navigation.
+
+### What the frontend does
+
+The frontend displays screens and collects user input. It will later send requests to the backend for sign-in, diary, privacy, and trusted-person features. The app must use the backend for data access and must not connect directly to Firestore.
+
+The current frontend is a starting scaffold:
+
+1. The app opens on a placeholder sign-in page.
+2. The sign-in button explains that authentication is not connected yet.
+3. Use **Owner** or **Asker** to preview each area.
+4. Each home page is an empty placeholder with a button back to sign-in.
+
+Real authentication and backend features should be added in later frontend tasks. Backend changes are separate and should be coordinated with the backend developer.
+
+### Start the frontend
+
+From the repository root:
+
+```bash
+cd eternita-frontend
+npm install
+npm start
+```
+
+In the Expo terminal, press `w` to open the web app, or scan the QR code with Expo Go to open it on a mobile device. You can also run the web version directly with:
+
+```bash
+npm run web
+```
+
+### Frontend structure
+
+| Path | Purpose |
+| --- | --- |
+| `eternita-frontend/src/app/` | Expo Router routes and app navigation |
+| `eternita-frontend/src/screens/` | Sign-in, owner, and asker screen layouts |
+| `eternita-frontend/src/features/` | Frontend API functions grouped by feature |
+| `eternita-frontend/src/api/` | Shared backend request client |
+
+When implementing a feature, add its screen under `src/screens/`, connect it to navigation in `src/app/`, and call backend endpoints through the shared API client. Keep credentials and private keys out of frontend source code.
+
 ## Backend Development
 
 The backend is built with Node.js, TypeScript, NestJS, Firebase Admin SDK, Firestore, SWI-Prolog, and Gemini.
