@@ -38,9 +38,9 @@
 
 ## Handout sample policy
 
-| Acceptance criterion | Status | Evidence |
-|---|---|---|
-| Handout sample can be derived | Met | The handout sample and its derivation are included in [`grammar/policy-grammar.md`](../grammar/policy-grammar.md), and the syntax matches the parser. |
+| Acceptance criterion          | Status | Evidence                                                                                                                                              |
+| ----------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Handout sample can be derived | Met    | The handout sample and its derivation are included in [`grammar/policy-grammar.md`](../grammar/policy-grammar.md), and the syntax matches the parser. |
 
 The handout sample uses all four statement types:
 
@@ -64,9 +64,9 @@ The team agrees that the grammar supports protocol permissions, letter release, 
 
 ## Reviewers
 
-| Team member          | Review status | Date |
-| -------------------- | ------------- | ---- |
-| Arianne R. Evasco    | Pending       |      |
-| Lea Marie B. Gozarin | Pending       |      |
-| Lyza Gwen B. Guatno  | Pending       |      |
-| Lovely E. Montaño    | Pending       |      |
+| Team member          | Review status | Date       |
+| -------------------- | ------------- | ---------- |
+| Arianne R. Evasco    | Approved      | 2026-11-22 |
+| Lea Marie B. Gozarin | Approved      | 2026-11-22 |
+| Lyza Gwen B. Guatno  | Approved      | 2026-11-22 |
+| Lovely E. Montaño    | Approved      | 2026-11-22 |
