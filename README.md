@@ -250,3 +250,16 @@ firebase/serviceAccountKey.json
 ID tokens
 API keys
 ```
+
+## Documentation
+
+Project documentation is stored in the `docs/` folder:
+
+- `docs/uml/` — Use case, sequence, and class diagrams
+- `docs/requirements/` — Finalized project requirements
+- `docs/architecture/` — System and backend architecture
+
+Project reports are stored in the `reports/` folder:
+
+- `reports/progress-reports/`
+- `reports/testing-reports/`
