@@ -30,9 +30,7 @@ default_writing_mode = "default" , "writing" , "mode" , writing_mode ;
 
 writing_mode = "verbatim" | "lightfix" | "review" ;
 
-identifier = lowercase_letter , { identifier_character } ;
-
-identifier*character = lowercase_letter | digit | "*" ;
+identifier = lowercase_letter , { lowercase_letter | digit | "_" } ;
 
 lowercase_letter = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i"
 | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r"

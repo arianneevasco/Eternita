@@ -38,7 +38,16 @@
 
 ## Handout sample policy
 
-The handout sample policy was reviewed and accepted as derivable from the EBNF grammar.
+| Acceptance criterion | Status | Evidence |
+|---|---|---|
+| Handout sample can be derived | Met | The handout sample and its derivation are included in [`grammar/policy-grammar.md`](../grammar/policy-grammar.md), and the syntax matches the parser. |
+
+The handout sample uses all four statement types:
+
+- Protocol permissions
+- Letter release
+- Custody transfer
+- Default writing mode
 
 ## Parser test result
 
