@@ -4,5 +4,10 @@ import { OwnerHomeScreen } from "../screens/owner/OwnerHomeScreen";
 export default function OwnerHomeRoute() {
   const router = useRouter();
 
-  return <OwnerHomeScreen onSignOut={() => router.replace("/")} />;
+  return (
+    <OwnerHomeScreen
+      onSignOut={() => router.replace("/sign-in")}
+      onNavigateToAsker={() => router.replace("/asker")}
+    />
+  );
 }

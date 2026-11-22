@@ -105,14 +105,16 @@ The frontend is a React Native app built with Expo and TypeScript. It is designe
 
 The frontend displays screens and collects user input. It will later send requests to the backend for sign-in, diary, privacy, and trusted-person features. The app must use the backend for data access and must not connect directly to Firestore.
 
-The current frontend is a starting scaffold:
+The current frontend follows the opening Eternita prototype flow:
 
-1. The app opens on a placeholder sign-in page.
-2. The sign-in button explains that authentication is not connected yet.
-3. Use **Owner** or **Asker** to preview each area.
-4. Each home page is an empty placeholder with a button back to sign-in.
+1. Start at the welcome screen and select **Get Started**.
+2. Enter a username, email, and password in the registration screen.
+3. Confirm the email using the demo inbox preview. No email is sent.
+4. Continue to the placeholder sign-in screen and enter any username and password.
+5. Use the face-scan preview, then choose the Owner or Asker home area.
+6. The Owner and Asker pages are empty placeholders with navigation between them.
 
-Real authentication and backend features should be added in later frontend tasks. Backend changes are separate and should be coordinated with the backend developer.
+This flow is frontend-only. It does not create an account, send email, check credentials, use the camera, or call the backend. The preview buttons on the sign-in screen also open either home area directly. Real authentication and backend features are separate future work and should be coordinated with the backend developer.
 
 ### Start the frontend
 
@@ -135,11 +137,11 @@ npm run web
 | Path | Purpose |
 | --- | --- |
 | `eternita-frontend/src/app/` | Expo Router routes and app navigation |
-| `eternita-frontend/src/screens/` | Sign-in, owner, and asker screen layouts |
+| `eternita-frontend/src/screens/` | Welcome, registration, demo verification, sign-in, face preview, and home layouts |
 | `eternita-frontend/src/features/` | Frontend API functions grouped by feature |
 | `eternita-frontend/src/api/` | Shared backend request client |
 
-When implementing a feature, add its screen under `src/screens/`, connect it to navigation in `src/app/`, and call backend endpoints through the shared API client. Keep credentials and private keys out of frontend source code.
+When implementing a screen, add it under `src/screens/` and connect it through `src/app/`. Do not connect this scaffold flow to the backend unless that work is separately agreed and coordinated with the backend developer. Keep credentials and private keys out of frontend source code.
 
 ## Backend Development
 

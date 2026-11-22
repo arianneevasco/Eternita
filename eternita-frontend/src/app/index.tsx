@@ -1,13 +1,13 @@
 import { useRouter } from "expo-router";
-import { SignInScreen } from "../screens/SignInScreen";
+import { WelcomeScreen } from "../screens/WelcomeScreen";
 
-export default function SignInRoute() {
+export default function WelcomeRoute() {
   const router = useRouter();
 
   return (
-    <SignInScreen
-      onPreviewOwner={() => router.push("/owner")}
-      onPreviewAsker={() => router.push("/asker")}
+    <WelcomeScreen
+      onGetStarted={() => router.push("/register")}
+      onSignIn={() => router.push("/sign-in")}
     />
   );
 }

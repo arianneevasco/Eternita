@@ -1,209 +1,216 @@
 import { useState } from "react";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { EternitaButton } from "../components/EternitaButton";
+import { EternitaFrame } from "../components/EternitaFrame";
 
 type Props = {
+  username?: string;
+  onSignIn: (username: string) => void;
+  onRegister: () => void;
   onPreviewOwner: () => void;
   onPreviewAsker: () => void;
 };
 
-export function SignInScreen({ onPreviewOwner, onPreviewAsker }: Props) {
-  const [email, setEmail] = useState("");
+export function SignInScreen({
+  username: initialUsername = "",
+  onSignIn,
+  onRegister,
+  onPreviewOwner,
+  onPreviewAsker,
+}: Props) {
+  const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
 
-  function signInPlaceholder() {
-    Alert.alert(
-      "Sign in is not connected yet",
-      "This page is a frontend scaffold. Use either preview button to check navigation."
-    );
+  function submit() {
+    const cleanUsername = username.trim();
+    if (!cleanUsername || !password) {
+      setError("Enter your username and password to continue.");
+      return;
+    }
+
+    setError("");
+    onSignIn(cleanUsername);
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.card}>
-          <Text style={styles.brand}>Eternita</Text>
-          <Text style={styles.title}>Sign in</Text>
-          <Text style={styles.description}>
-            Your personal diary, kept private.
-          </Text>
+    <EternitaFrame>
+      <View style={styles.content}>
+        <Text style={styles.brand}>Eternita</Text>
+        <Text style={styles.title}>Sign In</Text>
+        {username ? (
+          <Text style={styles.welcome}>Welcome, {username}!</Text>
+        ) : null}
 
-          <TextInput
-            accessibilityLabel="Email"
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            placeholder="Email"
-            placeholderTextColor="#B99A7B"
-            style={styles.input}
-            value={email}
-          />
+        <TextInput
+          accessibilityLabel="Username"
+          autoCapitalize="words"
+          onChangeText={setUsername}
+          placeholder="Username"
+          placeholderTextColor="#FFF1DD"
+          style={styles.input}
+          value={username}
+        />
+        <View style={styles.passwordField}>
           <TextInput
             accessibilityLabel="Password"
-            autoComplete="password"
+            autoComplete="current-password"
             onChangeText={setPassword}
             placeholder="Password"
-            placeholderTextColor="#B99A7B"
-            secureTextEntry
-            style={styles.input}
+            placeholderTextColor="#FFF1DD"
+            secureTextEntry={!showPassword}
+            style={styles.passwordInput}
             value={password}
           />
-
           <Pressable
             accessibilityRole="button"
-            onPress={signInPlaceholder}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.pressed,
-            ]}
+            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+            onPress={() => setShowPassword((visible) => !visible)}
           >
-            <Text style={styles.primaryButtonText}>Sign in</Text>
+            <Text style={styles.showLabel}>{showPassword ? "Hide" : "Show"}</Text>
           </Pressable>
-
-          <Text style={styles.previewLabel}>Preview a home area</Text>
-          <View style={styles.previewButtons}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onPreviewOwner}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>Owner</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onPreviewAsker}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>Asker</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.note}>
-            Authentication and account creation will be added in a later step.
-          </Text>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+        <EternitaButton title="Sign In" onPress={submit} />
+        <Text style={styles.demoNote}>
+          Frontend preview only. Credentials and face sign-in are not checked.
+        </Text>
+
+        <Text style={styles.legalNote}>
+          The Letter of Wishes is a personal message, not a legal will.
+          Philippine law has formal requirements for wills.
+        </Text>
+
+        <Text style={styles.registerPrompt}>
+          New to Eternita?{" "}
+          <Text accessibilityRole="link" onPress={onRegister} style={styles.link}>
+            Register
+          </Text>
+        </Text>
+
+        <View style={styles.preview}>
+          <Text style={styles.previewTitle}>Preview a home area</Text>
+          <View style={styles.previewButtons}>
+            <View style={styles.previewButton}>
+              <EternitaButton
+                title="Owner"
+                onPress={onPreviewOwner}
+                variant="secondary"
+              />
+            </View>
+            <View style={styles.previewButton}>
+              <EternitaButton
+                title="Asker"
+                onPress={onPreviewAsker}
+                variant="secondary"
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+    </EternitaFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#4E2B13",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  card: {
+  content: {
     width: "100%",
-    maxWidth: 440,
-    padding: 28,
-    borderRadius: 18,
-    backgroundColor: "#603717",
-    borderColor: "#B9783E",
-    borderWidth: 1,
+    justifyContent: "center",
+    gap: 14,
   },
   brand: {
     color: "#FFF7EA",
     fontFamily: "Georgia",
-    fontSize: 44,
+    fontSize: 54,
     textAlign: "center",
   },
   title: {
     color: "#FFF7EA",
     fontFamily: "Georgia",
-    fontSize: 28,
-    marginTop: 16,
+    fontSize: 22,
     textAlign: "center",
   },
-  description: {
-    color: "#E8D4BD",
-    fontSize: 15,
-    marginTop: 8,
-    marginBottom: 28,
+  welcome: {
+    color: "#FFF7EA",
+    fontSize: 18,
+    fontStyle: "italic",
     textAlign: "center",
   },
   input: {
-    height: 52,
-    borderRadius: 10,
-    borderColor: "#B9783E",
-    borderWidth: 1,
+    minHeight: 52,
+    borderWidth: 2,
+    borderColor: "#965316",
+    borderRadius: 14,
+    backgroundColor: "#B8752F",
     color: "#FFF7EA",
     fontSize: 16,
-    marginBottom: 14,
     paddingHorizontal: 16,
   },
-  primaryButton: {
-    height: 52,
+  passwordField: {
+    minHeight: 52,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    backgroundColor: "#B9783E",
+    borderWidth: 2,
+    borderColor: "#965316",
+    borderRadius: 14,
+    backgroundColor: "#B8752F",
+    paddingHorizontal: 16,
+  },
+  passwordInput: {
+    flex: 1,
+    minHeight: 48,
+    color: "#FFF7EA",
+    fontSize: 16,
+  },
+  showLabel: {
+    color: "#FFF7EA",
+    fontSize: 13,
+    fontWeight: "600",
+    paddingLeft: 8,
+  },
+  error: {
+    color: "#FFD1C8",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  demoNote: {
+    color: "#D8BE9E",
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+  },
+  legalNote: {
+    color: "#D8BE9E",
+    fontFamily: "Georgia",
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  registerPrompt: {
+    color: "#E6CFB2",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  link: {
+    color: "#F4B86E",
+    textDecorationLine: "underline",
+  },
+  preview: {
+    gap: 10,
     marginTop: 4,
   },
-  primaryButtonText: {
-    color: "#FFF7EA",
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  previewLabel: {
-    color: "#E8D4BD",
-    fontSize: 14,
-    marginTop: 26,
-    marginBottom: 10,
+  previewTitle: {
+    color: "#E6CFB2",
+    fontSize: 13,
     textAlign: "center",
   },
   previewButtons: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
-  secondaryButton: {
+  previewButton: {
     flex: 1,
-    minHeight: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    borderColor: "#B9783E",
-    borderWidth: 1,
-    borderRadius: 10,
-  },
-  secondaryButtonText: {
-    color: "#FFF7EA",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  note: {
-    color: "#D7BFA5",
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 20,
-    textAlign: "center",
-  },
-  pressed: {
-    opacity: 0.8,
   },
 });
