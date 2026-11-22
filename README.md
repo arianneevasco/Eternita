@@ -13,36 +13,63 @@ Eternita (Alaala) is a privacy-controlled personal AI diary. The owner can write
 
 ```text
 Eternita/
-├─ eternita-backend/
-│  ├─ src/
-│  │  └─ policy/
-│  ├─ test/
-│  ├─ prolog/
-│  │  └─ access-rules.pl
-│  ├─ docs/
-│  │  └─ grammar/
-│  │     └─ policy-grammar.md
-│  ├─ package.json
-│  └─ tsconfig.json
-│
-├─ docs/
-│  ├─ uml/
-│  ├─ requirements/
-│  └─ architecture/
-│
-└─ reports/
-   ├─ progress-reports/
-   └─ testing-reports/
+├── .gitignore
+├── README.md
+├── docs/
+│   ├── ai-design-note.md
+│   └── ai-use-log.md
+├── eternita-backend/
+│   ├── docs/
+│   │   └── grammar/
+│   │       └── policy-grammar.md
+│   ├── prolog/
+│   │   └── access-rules.pl
+│   ├── scripts/
+│   ├── src/
+│   │   ├── account/
+│   │   ├── ai/
+│   │   ├── auth/
+│   │   ├── common/
+│   │   ├── config/
+│   │   ├── diary/
+│   │   ├── health/
+│   │   ├── legacy/
+│   │   ├── people/
+│   │   └── policy/
+│   ├── test/
+│   ├── package.json
+│   └── tsconfig.json
+├── eternita-frontend/
+│   ├── assets/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── app/
+│   │   ├── components/
+│   │   ├── features/
+│   │   │   ├── account/
+│   │   │   ├── diary/
+│   │   │   └── people/
+│   │   └── screens/
+│   │       ├── asker/
+│   │       └── owner/
+│   ├── app.json
+│   ├── package.json
+│   └── tsconfig.json
+└── Test_Plan/
+    ├── Access_Test_Cases.md
+    ├── AI_Use_Logs.md
+    ├── Resources_And_References.md
+    ├── Test_Data.json
+    ├── Test_Execution_Log.md
+    └── Test_Plan.md
 ```
 
-| Folder                           | Purpose                                                                    |
-| -------------------------------- | -------------------------------------------------------------------------- |
-| `eternita-backend/src/`          | NestJS backend source code                                                 |
-| `eternita-backend/test/`         | Backend, policy, and Prolog tests                                          |
-| `eternita-backend/prolog/`       | SWI-Prolog access rules used by the backend                                |
-| `eternita-backend/docs/grammar/` | Policy-language grammar and examples                                       |
-| `docs/`                          | Shared project documentation, UML diagrams, requirements, and architecture |
-| `reports/`                       | Progress reports, testing reports, and final project reports               |
+| Folder | Purpose |
+| --- | --- |
+| `docs/` | Shared AI design and usage notes |
+| `eternita-backend/` | NestJS API, Prolog access rules, and backend tests |
+| `eternita-frontend/` | Expo and React Native app for web and mobile |
+| `Test_Plan/` | Test cases, test data, execution logs, and references |
 
 ## Branching Convention
 
@@ -150,6 +177,67 @@ npm test -- --runInBand
 - Access is denied by default.
 - A matching denial overrides an allow rule.
 - Diary entries with any denied topic must not be sent to Gemini.
+
+## Project Documentation
+
+Shared project notes are stored in `docs/`:
+
+- `docs/ai-design-note.md` — AI design and usage note
+- `docs/ai-use-log.md` — AI usage log
+
+Test planning files are stored in `Test_Plan/`:
+
+- `Test_Plan/Test_Plan.md` — Test plan
+- `Test_Plan/Access_Test_Cases.md` — Access-control test cases
+- `Test_Plan/Test_Data.json` — Test data
+- `Test_Plan/Test_Execution_Log.md` — Test execution log
+- `Test_Plan/Resources_And_References.md` — Test resources and references
+- `Test_Plan/AI_Use_Logs.md` — AI use logs
+
+## Frontend Development
+
+The frontend is a React Native app built with Expo and TypeScript. It runs on Android, iOS, and the web. Expo Router uses files in `eternita-frontend/src/app/` for navigation.
+
+### What the frontend does
+
+The frontend displays screens and collects user input. The current app follows the opening Eternita prototype flow:
+
+1. Start at the welcome screen and select **Get Started**.
+2. Enter a username, email, and password in the registration screen.
+3. Confirm the email using the demo inbox preview. No email is sent.
+4. Continue to the placeholder sign-in screen and enter any username and password.
+5. Use the face-scan preview, then choose the Owner or Asker home area.
+6. The Owner and Asker pages are empty placeholders with navigation between them.
+
+This flow is frontend-only. It does not create an account, send email, check credentials, use the camera, or call the backend. The preview buttons on the sign-in screen also open either home area directly. Real authentication and backend features are separate future work and should be coordinated with the backend developer.
+
+### Start the frontend
+
+From the repository root:
+
+```bash
+cd eternita-frontend
+npm install
+npm start
+```
+
+In the Expo terminal, press `w` to open the web app, or scan the QR code with Expo Go to open it on a mobile device. You can also run the web version directly with:
+
+```bash
+npm run web
+```
+
+### Frontend structure
+
+| Path | Purpose |
+| --- | --- |
+| `eternita-frontend/src/app/` | Expo Router routes and app navigation |
+| `eternita-frontend/src/screens/` | Welcome, registration, demo verification, sign-in, face preview, and home layouts |
+| `eternita-frontend/src/components/` | Shared buttons and frame layout |
+| `eternita-frontend/src/features/` | Frontend API functions grouped by feature |
+| `eternita-frontend/src/api/` | Shared backend request client |
+
+When adding a screen, put its layout in `src/screens/` and connect it through `src/app/`. Do not connect this scaffold flow to the backend unless that work is separately agreed and coordinated with the backend developer. Keep credentials and private keys out of frontend source code.
 
 ## Important Files
 
