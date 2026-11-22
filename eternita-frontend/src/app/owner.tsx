@@ -1,24 +1,8 @@
-import { Redirect, useRouter } from "expo-router";
-import { useAuth } from "../features/account/AuthContext";
+import { useRouter } from "expo-router";
 import { OwnerHomeScreen } from "../screens/owner/OwnerHomeScreen";
 
 export default function OwnerHomeRoute() {
   const router = useRouter();
-  const { profile, signOut } = useAuth();
 
-  if (!profile) {
-    return <Redirect href="/sign-in" />;
-  }
-  if (profile.role !== "owner") {
-    return <Redirect href="/asker" />;
-  }
-
-  return (
-    <OwnerHomeScreen
-      onSignOut={() => {
-        signOut();
-        router.replace("/");
-      }}
-    />
-  );
+  return <OwnerHomeScreen onSignOut={() => router.replace("/")} />;
 }

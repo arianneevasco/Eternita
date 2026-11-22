@@ -105,24 +105,14 @@ The frontend is a React Native app built with Expo and TypeScript. It is designe
 
 The frontend displays screens and collects user input. It will later send requests to the backend for sign-in, diary, privacy, and trusted-person features. The app must use the backend for data access and must not connect directly to Firestore.
 
-The current account flow is:
+The current frontend is a starting scaffold:
 
-1. The welcome page offers **Get Started** or a link to sign in.
-2. Registration creates an email/password account in Firebase and creates the owner profile through the backend.
-3. Eternita asks Firebase to send an email verification link.
-4. After the email is verified, the user confirms in the app and signs in to the correct home page.
-5. Signing out clears the in-memory session and returns to the welcome page.
+1. The app opens on a placeholder sign-in page.
+2. The sign-in button explains that authentication is not connected yet.
+3. Use **Owner** or **Asker** to preview each area.
+4. Each home page is an empty placeholder with a button back to sign-in.
 
-Owner and asker home pages are currently placeholders for future diary features. Face enrollment and face sign-in are not implemented: the current backend has no face-enrollment or face-authentication endpoints. The app uses email/password authentication until the backend team provides that support.
-
-### Configure the frontend
-
-Copy `.env.example` to `.env` in `eternita-frontend` and set:
-
-- `EXPO_PUBLIC_FIREBASE_API_KEY` to the Firebase project's web API key. Enable Email/Password in Firebase Authentication.
-- `EXPO_PUBLIC_API_BASE_URL` to the backend URL. Use `http://localhost:3000` for web on the same computer. On a phone, use the computer's reachable LAN address instead of `localhost`.
-
-For web sign-up and sign-in, the backend must allow CORS requests from the Expo web development origin (normally `http://localhost:8081`). The backend currently does not enable CORS, so the backend developer must add that configuration before the web app can complete profile requests. No backend files were changed for this frontend work.
+Real authentication and backend features should be added in later frontend tasks. Backend changes are separate and should be coordinated with the backend developer.
 
 ### Start the frontend
 
@@ -149,7 +139,7 @@ npm run web
 | `eternita-frontend/src/features/` | Frontend API functions grouped by feature |
 | `eternita-frontend/src/api/` | Shared backend request client |
 
-When implementing a feature, add its screen under `src/screens/`, connect it to navigation in `src/app/`, and call backend endpoints through the shared API client. Keep credentials and private keys out of frontend source code. Firebase web API keys are public app configuration; never put service-account keys, ID tokens, or other private credentials in the frontend.
+When implementing a feature, add its screen under `src/screens/`, connect it to navigation in `src/app/`, and call backend endpoints through the shared API client. Keep credentials and private keys out of frontend source code.
 
 ## Backend Development
 
