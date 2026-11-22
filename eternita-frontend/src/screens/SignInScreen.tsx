@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { EternitaButton } from "../components/EternitaButton";
 import { EternitaFrame } from "../components/EternitaFrame";
 
@@ -22,6 +29,8 @@ export function SignInScreen({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   function submit() {
     const cleanUsername = username.trim();
@@ -36,76 +45,91 @@ export function SignInScreen({
 
   return (
     <EternitaFrame>
-      <View style={styles.content}>
-        <Text style={styles.brand}>Eternita</Text>
-        <Text style={styles.title}>Sign In</Text>
-        {username ? (
-          <Text style={styles.welcome}>Welcome, {username}!</Text>
-        ) : null}
-
-        <TextInput
-          accessibilityLabel="Username"
-          autoCapitalize="words"
-          onChangeText={setUsername}
-          placeholder="Username"
-          placeholderTextColor="#FFF1DD"
-          style={styles.input}
-          value={username}
-        />
-        <View style={styles.passwordField}>
-          <TextInput
-            accessibilityLabel="Password"
-            autoComplete="current-password"
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor="#FFF1DD"
-            secureTextEntry={!showPassword}
-            style={styles.passwordInput}
-            value={password}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-            onPress={() => setShowPassword((visible) => !visible)}
-          >
-            <Text style={styles.showLabel}>{showPassword ? "Hide" : "Show"}</Text>
-          </Pressable>
+      <View style={[styles.content, isDesktop && styles.desktopContent]}>
+        <View style={[styles.hero, isDesktop && styles.desktopHero]}>
+          <Text style={[styles.brand, isDesktop && styles.desktopBrand]}>
+            Eternita
+          </Text>
+          <Text style={styles.title}>Sign In</Text>
+          {username ? (
+            <Text style={styles.welcome}>Welcome, {username}!</Text>
+          ) : null}
+          <Text style={[styles.legalNote, isDesktop && styles.desktopLegalNote]}>
+            The Letter of Wishes is a personal message, not a legal will.
+            Philippine law has formal requirements for wills.
+          </Text>
         </View>
 
-        {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-        <EternitaButton title="Sign In" onPress={submit} />
-        <Text style={styles.demoNote}>
-          Frontend preview only. Credentials and face sign-in are not checked.
-        </Text>
+        <View style={[styles.form, isDesktop && styles.desktopForm]}>
+          <TextInput
+            accessibilityLabel="Username"
+            autoCapitalize="words"
+            onChangeText={setUsername}
+            placeholder="Username"
+            placeholderTextColor="#FFF1DD"
+            style={styles.input}
+            value={username}
+          />
+          <View style={styles.passwordField}>
+            <TextInput
+              accessibilityLabel="Password"
+              autoComplete="current-password"
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor="#FFF1DD"
+              secureTextEntry={!showPassword}
+              style={styles.passwordInput}
+              value={password}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              onPress={() => setShowPassword((visible) => !visible)}
+            >
+              <Text style={styles.showLabel}>
+                {showPassword ? "Hide" : "Show"}
+              </Text>
+            </Pressable>
+          </View>
 
-        <Text style={styles.legalNote}>
-          The Letter of Wishes is a personal message, not a legal will.
-          Philippine law has formal requirements for wills.
-        </Text>
-
-        <Text style={styles.registerPrompt}>
-          New to Eternita?{" "}
-          <Text accessibilityRole="link" onPress={onRegister} style={styles.link}>
-            Register
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
+          <EternitaButton title="Sign In" onPress={submit} />
+          <Text style={styles.demoNote}>
+            Frontend preview only. Credentials and face sign-in are not checked.
           </Text>
-        </Text>
 
-        <View style={styles.preview}>
-          <Text style={styles.previewTitle}>Preview a home area</Text>
-          <View style={styles.previewButtons}>
-            <View style={styles.previewButton}>
-              <EternitaButton
-                title="Owner"
-                onPress={onPreviewOwner}
-                variant="secondary"
-              />
-            </View>
-            <View style={styles.previewButton}>
-              <EternitaButton
-                title="Asker"
-                onPress={onPreviewAsker}
-                variant="secondary"
-              />
+          <Text style={styles.registerPrompt}>
+            New to Eternita?{" "}
+            <Text
+              accessibilityRole="link"
+              onPress={onRegister}
+              style={styles.link}
+            >
+              Register
+            </Text>
+          </Text>
+
+          <View style={styles.preview}>
+            <Text style={styles.previewTitle}>Preview a home area</Text>
+            <View style={styles.previewButtons}>
+              <View style={styles.previewButton}>
+                <EternitaButton
+                  title="Owner"
+                  onPress={onPreviewOwner}
+                  variant="secondary"
+                />
+              </View>
+              <View style={styles.previewButton}>
+                <EternitaButton
+                  title="Asker"
+                  onPress={onPreviewAsker}
+                  variant="secondary"
+                />
+              </View>
             </View>
           </View>
         </View>
@@ -120,11 +144,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 14,
   },
+  desktopContent: {
+    maxWidth: 1120,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 72,
+  },
+  hero: {
+    gap: 14,
+  },
+  desktopHero: {
+    flex: 1,
+  },
+  form: {
+    gap: 14,
+  },
+  desktopForm: {
+    flex: 1,
+    maxWidth: 520,
+  },
   brand: {
     color: "#FFF7EA",
     fontFamily: "Georgia",
     fontSize: 54,
     textAlign: "center",
+  },
+  desktopBrand: {
+    fontSize: 80,
+    textAlign: "left",
   },
   title: {
     color: "#FFF7EA",
@@ -187,6 +235,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     textAlign: "center",
+  },
+  desktopLegalNote: {
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "left",
+    marginTop: 16,
   },
   registerPrompt: {
     color: "#E6CFB2",

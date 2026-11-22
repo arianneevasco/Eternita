@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { EternitaButton } from "../components/EternitaButton";
 import { EternitaFrame } from "../components/EternitaFrame";
 
@@ -8,33 +8,44 @@ type Props = {
 };
 
 export function WelcomeScreen({ onGetStarted, onSignIn }: Props) {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
+
   return (
     <EternitaFrame>
-      <View style={styles.content}>
-        <Text style={styles.brand}>Eternita</Text>
-        <Text style={styles.subtitle}>My Personal Diary</Text>
-
-        <View style={styles.instructions}>
-          <Text style={styles.instructionsTitle}>BEFORE YOU START</Text>
-          <Text style={styles.instruction}>1. Register your account</Text>
-          <Text style={styles.instruction}>2. Enroll and verify your face</Text>
-          <Text style={styles.instruction}>
-            3. From then on, sign in with your face
+      <View style={[styles.content, isDesktop && styles.desktopContent]}>
+        <View style={[styles.hero, isDesktop && styles.desktopHero]}>
+          <Text style={[styles.brand, isDesktop && styles.desktopBrand]}>
+            Eternita
+          </Text>
+          <Text style={[styles.subtitle, isDesktop && styles.desktopSubtitle]}>
+            My Personal Diary
           </Text>
         </View>
 
-        <Text style={styles.disclaimer}>
-          The Letter of Wishes is a personal message, not a legal will.
-          Philippine law has formal requirements for wills.
-        </Text>
+        <View style={[styles.details, isDesktop && styles.desktopDetails]}>
+          <View style={styles.instructions}>
+            <Text style={styles.instructionsTitle}>BEFORE YOU START</Text>
+            <Text style={styles.instruction}>1. Register your account</Text>
+            <Text style={styles.instruction}>2. Enroll and verify your face</Text>
+            <Text style={styles.instruction}>
+              3. From then on, sign in with your face
+            </Text>
+          </View>
 
-        <EternitaButton title="Get Started" onPress={onGetStarted} />
-        <Text style={styles.signInPrompt}>
-          Already have an account?{" "}
-          <Text accessibilityRole="link" onPress={onSignIn} style={styles.link}>
-            Sign in
+          <Text style={styles.disclaimer}>
+            The Letter of Wishes is a personal message, not a legal will.
+            Philippine law has formal requirements for wills.
           </Text>
-        </Text>
+
+          <EternitaButton title="Get Started" onPress={onGetStarted} />
+          <Text style={styles.signInPrompt}>
+            Already have an account?{" "}
+            <Text accessibilityRole="link" onPress={onSignIn} style={styles.link}>
+              Sign in
+            </Text>
+          </Text>
+        </View>
       </View>
     </EternitaFrame>
   );
@@ -46,18 +57,45 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 18,
   },
+  desktopContent: {
+    maxWidth: 1120,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 72,
+  },
+  hero: {
+    gap: 8,
+  },
+  desktopHero: {
+    flex: 1,
+  },
+  details: {
+    gap: 18,
+  },
+  desktopDetails: {
+    flex: 1,
+    maxWidth: 560,
+  },
   brand: {
     color: "#FFF7EA",
     fontFamily: "Georgia",
     fontSize: 58,
     textAlign: "center",
   },
+  desktopBrand: {
+    fontSize: 88,
+    textAlign: "left",
+  },
   subtitle: {
     color: "#FFF7EA",
     fontFamily: "Georgia",
     fontSize: 20,
-    marginBottom: 8,
     textAlign: "center",
+  },
+  desktopSubtitle: {
+    fontSize: 26,
+    textAlign: "left",
   },
   instructions: {
     gap: 5,

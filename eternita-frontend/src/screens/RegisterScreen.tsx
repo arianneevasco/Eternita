@@ -5,6 +5,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { EternitaButton } from "../components/EternitaButton";
 import { EternitaFrame } from "../components/EternitaFrame";
@@ -21,6 +22,8 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [error, setError] = useState("");
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
 
   function submit() {
     const cleanUsername = username.trim();
@@ -52,72 +55,98 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
 
   return (
     <EternitaFrame>
-      <View style={styles.content}>
-        <Text style={styles.brand}>Eternita</Text>
-        <Text style={styles.title}>Register</Text>
-
-        <TextInput
-          accessibilityLabel="Username"
-          autoCapitalize="words"
-          onChangeText={setUsername}
-          placeholder="Username"
-          placeholderTextColor="#FFF1DD"
-          style={styles.input}
-          value={username}
-        />
-        <TextInput
-          accessibilityLabel="Email"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          placeholder="Email"
-          placeholderTextColor="#FFF1DD"
-          style={styles.input}
-          value={email}
-        />
-        <View style={styles.passwordField}>
-          <TextInput
-            accessibilityLabel="Password (Atleast 8 Character)"
-            autoComplete="new-password"
-            onChangeText={setPassword}
-            placeholder="Password (Atleast 8 Character)"
-            placeholderTextColor="#FFF1DD"
-            secureTextEntry={!showPasswords}
-            style={styles.passwordInput}
-            value={password}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={showPasswords ? "Hide passwords" : "Show passwords"}
-            onPress={() => setShowPasswords((visible) => !visible)}
-          >
-            <Text style={styles.showLabel}>{showPasswords ? "Hide" : "Show"}</Text>
-          </Pressable>
-        </View>
-        <View style={styles.passwordField}>
-          <TextInput
-            accessibilityLabel="Confirm password"
-            autoComplete="new-password"
-            onChangeText={setConfirmPassword}
-            placeholder="Confirm password"
-            placeholderTextColor="#FFF1DD"
-            secureTextEntry={!showPasswords}
-            style={styles.passwordInput}
-            value={confirmPassword}
-          />
+      <View style={[styles.content, isDesktop && styles.desktopContent]}>
+        <View style={[styles.hero, isDesktop && styles.desktopHero]}>
+          <Text style={[styles.brand, isDesktop && styles.desktopBrand]}>
+            Eternita
+          </Text>
+          <Text style={styles.title}>Register</Text>
+          {isDesktop ? (
+            <>
+              <Text style={styles.note}>
+                Use an invented name and fiction details. The PIN is only a
+                backup if your face not recognized.
+              </Text>
+              <Text style={styles.demoNote}>
+                Frontend preview only. No account is created or sent to a
+                server.
+              </Text>
+            </>
+          ) : null}
         </View>
 
-        <Text style={styles.note}>
-          Use an invented name and fiction details. The PIN is only a backup if
-          your face not recognized.
-        </Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <EternitaButton title="Create Account" onPress={submit} />
-        <Text style={styles.demoNote}>
-          Frontend preview only. No account is created or sent to a server.
-        </Text>
-        <EternitaButton title="Back" onPress={onBack} variant="secondary" />
+        <View style={[styles.form, isDesktop && styles.desktopForm]}>
+          <TextInput
+            accessibilityLabel="Username"
+            autoCapitalize="words"
+            onChangeText={setUsername}
+            placeholder="Username"
+            placeholderTextColor="#FFF1DD"
+            style={styles.input}
+            value={username}
+          />
+          <TextInput
+            accessibilityLabel="Email"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            onChangeText={setEmail}
+            placeholder="Email"
+            placeholderTextColor="#FFF1DD"
+            style={styles.input}
+            value={email}
+          />
+          <View style={styles.passwordField}>
+            <TextInput
+              accessibilityLabel="Password (Atleast 8 Character)"
+              autoComplete="new-password"
+              onChangeText={setPassword}
+              placeholder="Password (Atleast 8 Character)"
+              placeholderTextColor="#FFF1DD"
+              secureTextEntry={!showPasswords}
+              style={styles.passwordInput}
+              value={password}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                showPasswords ? "Hide passwords" : "Show passwords"
+              }
+              onPress={() => setShowPasswords((visible) => !visible)}
+            >
+              <Text style={styles.showLabel}>
+                {showPasswords ? "Hide" : "Show"}
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.passwordField}>
+            <TextInput
+              accessibilityLabel="Confirm password"
+              autoComplete="new-password"
+              onChangeText={setConfirmPassword}
+              placeholder="Confirm password"
+              placeholderTextColor="#FFF1DD"
+              secureTextEntry={!showPasswords}
+              style={styles.passwordInput}
+              value={confirmPassword}
+            />
+          </View>
+
+          {!isDesktop ? (
+            <Text style={styles.note}>
+              Use an invented name and fiction details. The PIN is only a
+              backup if your face not recognized.
+            </Text>
+          ) : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <EternitaButton title="Create Account" onPress={submit} />
+          {!isDesktop ? (
+            <Text style={styles.demoNote}>
+              Frontend preview only. No account is created or sent to a server.
+            </Text>
+          ) : null}
+          <EternitaButton title="Back" onPress={onBack} variant="secondary" />
+        </View>
       </View>
     </EternitaFrame>
   );
@@ -129,11 +158,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 14,
   },
+  desktopContent: {
+    maxWidth: 1120,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 72,
+  },
+  hero: {
+    gap: 14,
+  },
+  desktopHero: {
+    flex: 1,
+  },
+  form: {
+    gap: 14,
+  },
+  desktopForm: {
+    flex: 1,
+    maxWidth: 560,
+  },
   brand: {
     color: "#FFF7EA",
     fontFamily: "Georgia",
     fontSize: 54,
     textAlign: "center",
+  },
+  desktopBrand: {
+    fontSize: 80,
+    textAlign: "left",
   },
   title: {
     color: "#FFF7EA",
@@ -164,9 +217,11 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     minHeight: 48,
     color: "#FFF7EA",
-    fontSize: 16,
+    fontSize: 14,
   },
   showLabel: {
     color: "#FFF7EA",

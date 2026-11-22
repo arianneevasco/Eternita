@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { EternitaButton } from "../../components/EternitaButton";
 import { EternitaFrame } from "../../components/EternitaFrame";
 
@@ -8,15 +8,18 @@ type Props = {
 };
 
 export function AskerHomeScreen({ onSignOut, onNavigateToOwner }: Props) {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 900;
+
   return (
     <EternitaFrame>
-      <View style={styles.content}>
+      <View style={[styles.content, isDesktop && styles.desktopContent]}>
         <Text style={styles.brand}>Eternita</Text>
         <Text style={styles.title}>Asker Home</Text>
         <Text style={styles.description}>
           The asker home page is ready for future screens.
         </Text>
-        <View style={styles.navigation}>
+        <View style={[styles.navigation, isDesktop && styles.desktopNavigation]}>
           <EternitaButton
             title="Owner Area"
             onPress={onNavigateToOwner}
@@ -35,6 +38,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 18,
+  },
+  desktopContent: {
+    maxWidth: 820,
+    alignSelf: "center",
+    paddingVertical: 36,
   },
   brand: {
     color: "#FFF7EA",
@@ -57,5 +65,8 @@ const styles = StyleSheet.create({
   },
   navigation: {
     width: "100%",
+  },
+  desktopNavigation: {
+    maxWidth: 440,
   },
 });
