@@ -24,6 +24,10 @@ function getApiBaseUrl(): string {
   return baseUrl;
 }
 
+export function assertApiBaseUrlConfigured(): void {
+  getApiBaseUrl();
+}
+
 function getApplicationError(payload: unknown): string | undefined {
   if (!payload || typeof payload !== "object") {
     return undefined;

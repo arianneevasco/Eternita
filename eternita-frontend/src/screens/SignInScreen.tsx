@@ -1,6 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,21 +10,40 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { PrimaryButton } from "../components/PrimaryButton";
 
 type Props = {
-  onPreviewOwner: () => void;
-  onPreviewAsker: () => void;
+  onSignIn: (email: string, password: string) => Promise<void>;
+  onRegister: () => void;
+  onBack: () => void;
 };
 
-export function SignInScreen({ onPreviewOwner, onPreviewAsker }: Props) {
+export function SignInScreen({ onSignIn, onRegister, onBack }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function signInPlaceholder() {
-    Alert.alert(
-      "Sign in is not connected yet",
-      "This page is a frontend scaffold. Use either preview button to check navigation."
-    );
+  async function submit() {
+    setError("");
+    if (!email.trim() || !password) {
+      setError("Enter your email and password.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await onSignIn(email.trim(), password);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Sign in failed. Please try again."
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -32,76 +51,61 @@ export function SignInScreen({ onPreviewOwner, onPreviewAsker }: Props) {
       style={styles.screen}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.card}>
-          <Text style={styles.brand}>Eternita</Text>
-          <Text style={styles.title}>Sign in</Text>
-          <Text style={styles.description}>
-            Your personal diary, kept private.
-          </Text>
-
-          <TextInput
-            accessibilityLabel="Email"
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            placeholder="Email"
-            placeholderTextColor="#B99A7B"
-            style={styles.input}
-            value={email}
-          />
-          <TextInput
-            accessibilityLabel="Password"
-            autoComplete="password"
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor="#B99A7B"
-            secureTextEntry
-            style={styles.input}
-            value={password}
-          />
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={signInPlaceholder}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>Sign in</Text>
-          </Pressable>
-
-          <Text style={styles.previewLabel}>Preview a home area</Text>
-          <View style={styles.previewButtons}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.book}>
+          <View style={styles.innerBorder}>
             <Pressable
+              onPress={onBack}
               accessibilityRole="button"
-              onPress={onPreviewOwner}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-              ]}
+              style={styles.backButton}
             >
-              <Text style={styles.secondaryButtonText}>Owner</Text>
+              <Text style={styles.back}>‹ Back</Text>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onPreviewAsker}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>Asker</Text>
-            </Pressable>
+            <Text style={styles.brand}>Eternita</Text>
+            <Text style={styles.title}>Sign in</Text>
+            <View style={styles.form}>
+              <TextInput
+                accessibilityLabel="Email"
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                onChangeText={setEmail}
+                placeholder="Email"
+                placeholderTextColor="#F0D8B6"
+                style={styles.input}
+                value={email}
+              />
+              <View style={styles.passwordRow}>
+                <TextInput
+                  accessibilityLabel="Password"
+                  autoComplete="password"
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  placeholderTextColor="#F0D8B6"
+                  secureTextEntry={!showPassword}
+                  style={[styles.input, styles.passwordInput]}
+                  value={password}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                  onPress={() => setShowPassword((current) => !current)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons name={showPassword ? "eye-off" : "eye"} size={22} color="#F4D6AE" />
+                </Pressable>
+              </View>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <PrimaryButton
+                title={busy ? "Signing in..." : "Sign in"}
+                disabled={busy}
+                onPress={submit}
+              />
+              <Pressable onPress={onRegister} accessibilityRole="button">
+                <Text style={styles.link}>Create an account</Text>
+              </Pressable>
+            </View>
           </View>
-          <Text style={styles.note}>
-            Authentication and account creation will be added in a later step.
-          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -109,101 +113,90 @@ export function SignInScreen({ onPreviewOwner, onPreviewAsker }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#4E2B13",
-  },
-  scrollContent: {
+  screen: { flex: 1, backgroundColor: "#000" },
+  content: {
     flexGrow: 1,
-    alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    alignItems: "center",
+    padding: 18,
   },
-  card: {
+  book: {
     width: "100%",
-    maxWidth: 440,
-    padding: 28,
-    borderRadius: 18,
-    backgroundColor: "#603717",
-    borderColor: "#B9783E",
-    borderWidth: 1,
+    maxWidth: 620,
+    minHeight: 680,
+    backgroundColor: "#573010",
+    padding: 16,
+  },
+  innerBorder: {
+    flex: 1,
+    borderWidth: 3,
+    borderColor: "#C38A4D",
+    borderRadius: 7,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 26,
+  },
+  backButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    zIndex: 1,
+  },
+  back: {
+    color: "#F4D6AE",
+    fontSize: 16,
   },
   brand: {
-    color: "#FFF7EA",
+    color: "#FFF8EA",
     fontFamily: "Georgia",
-    fontSize: 44,
-    textAlign: "center",
+    fontSize: 58,
   },
   title: {
-    color: "#FFF7EA",
+    color: "#FFF8EA",
     fontFamily: "Georgia",
     fontSize: 28,
     marginTop: 16,
-    textAlign: "center",
+    marginBottom: 36,
   },
-  description: {
-    color: "#E8D4BD",
-    fontSize: 15,
-    marginTop: 8,
-    marginBottom: 28,
-    textAlign: "center",
-  },
+  form: { width: "100%", maxWidth: 430 },
   input: {
-    height: 52,
-    borderRadius: 10,
-    borderColor: "#B9783E",
-    borderWidth: 1,
-    color: "#FFF7EA",
-    fontSize: 16,
-    marginBottom: 14,
-    paddingHorizontal: 16,
+    height: 58,
+    borderRadius: 17,
+    borderWidth: 2,
+    borderColor: "#895018",
+    backgroundColor: "#A96F35",
+    color: "#FFF8EA",
+    fontSize: 19,
+    paddingHorizontal: 20,
+    marginBottom: 17,
   },
-  primaryButton: {
-    height: 52,
+  passwordRow: {
+    position: "relative",
+  },
+  passwordInput: {
+    paddingRight: 58,
+  },
+  eyeButton: {
+    position: "absolute",
+    top: 0,
+    right: 12,
+    width: 42,
+    height: 58,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
-    backgroundColor: "#B9783E",
+  },
+  error: {
+    color: "#FFD3C5",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
     marginTop: 4,
   },
-  primaryButtonText: {
-    color: "#FFF7EA",
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  previewLabel: {
-    color: "#E8D4BD",
-    fontSize: 14,
-    marginTop: 26,
-    marginBottom: 10,
+  link: {
+    color: "#F4D6AE",
+    fontSize: 15,
+    marginTop: 22,
     textAlign: "center",
-  },
-  previewButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    borderColor: "#B9783E",
-    borderWidth: 1,
-    borderRadius: 10,
-  },
-  secondaryButtonText: {
-    color: "#FFF7EA",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  note: {
-    color: "#D7BFA5",
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 20,
-    textAlign: "center",
-  },
-  pressed: {
-    opacity: 0.8,
+    textDecorationLine: "underline",
   },
 });
