@@ -1,10 +1,18 @@
 import { calculateEntryHash } from "./hashChain";
 import { TamperDetected } from "./types";
-import type { ChainVerificationResult, StoredEntry } from "./types";
+import type {
+  ChainCheckpoint,
+  ChainVerificationResult,
+  StoredEntry
+} from "./types.js";
 
 export class EntryStore {
   private entries: StoredEntry[] = [];
   private previousHash = "GENESIS";
+  private checkpoint: ChainCheckpoint = {
+    expectedEntryCount: 0,
+    expectedLatestHash: "GENESIS"
+  };
 
   appendEntry(input: {
     id: string;
@@ -33,6 +41,11 @@ export class EntryStore {
     this.entries.push(storedEntry);
     this.previousHash = entryHash;
 
+    this.checkpoint = {
+      expectedEntryCount: this.entries.length,
+      expectedLatestHash: entryHash
+    };
+
     return storedEntry;
   }
 
@@ -40,7 +53,21 @@ export class EntryStore {
     return [...this.entries];
   }
 
+  getCheckpoint(): ChainCheckpoint {
+    return { ...this.checkpoint };
+  }
+
   verify(): ChainVerificationResult {
+    if (this.entries.length !== this.checkpoint.expectedEntryCount) {
+      return {
+        isValid: false,
+        brokenAtSequence: this.checkpoint.expectedEntryCount,
+        reason:
+          `Removed entry detected: expected ${this.checkpoint.expectedEntryCount} ` +
+          `entries, but found ${this.entries.length}.`
+      };
+    }
+
     let expectedPreviousHash = "GENESIS";
 
     for (const entry of this.entries) {
@@ -57,7 +84,9 @@ export class EntryStore {
         return {
           isValid: false,
           brokenAtSequence: entry.sequence,
-          reason: `Broken link at entry ${entry.sequence}: previous hash does not match the expected previous hash.`
+          reason:
+            `Broken link at entry ${entry.sequence}: previous hash does not ` +
+            `match the expected previous hash.`
         };
       }
 
@@ -65,11 +94,28 @@ export class EntryStore {
         return {
           isValid: false,
           brokenAtSequence: entry.sequence,
-          reason: `Tampered entry detected at entry ${entry.sequence}: stored hash does not match recalculated hash.`
+          reason:
+            `Tampered entry detected at entry ${entry.sequence}: stored hash ` +
+            `does not match recalculated hash.`
         };
       }
 
       expectedPreviousHash = entry.entryHash;
+    }
+
+    const lastEntry = this.entries[this.entries.length - 1];
+
+    if (
+      this.entries.length > 0 &&
+      lastEntry.entryHash !== this.checkpoint.expectedLatestHash
+    ) {
+      return {
+        isValid: false,
+        brokenAtSequence: lastEntry.sequence,
+        reason:
+          `Tampered entry detected at entry ${lastEntry.sequence}: ` +
+          `the latest hash does not match the trusted checkpoint.`
+      };
     }
 
     return {

@@ -8,6 +8,11 @@ export interface StoredEntry {
   correctedText: string;
 }
 
+export interface ChainCheckpoint {
+  expectedEntryCount: number;
+  expectedLatestHash: string;
+}
+
 export interface ChainVerificationResult {
   isValid: boolean;
   brokenAtSequence: number | null;

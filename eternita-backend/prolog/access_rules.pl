@@ -1,38 +1,95 @@
-% People
+% ============================================================
+% Eternita - Initial Prolog Access Rules
+% Task 2.07
+%
+% This file defines the initial facts and access rules for
+% people, diary entries, protocols, tags, and grants.
+%
+% Access is deny-by-default:
+% A person has no access unless a valid protocol and grant
+% explicitly allow it.
+% ============================================================
+
+
+% ------------------------------------------------------------
+% PEOPLE
+% ------------------------------------------------------------
+
+% Maria is the owner of the example diary entries.
 person(maria).
+
+% Ana is a beneficiary connected to Maria through protocols.
 person(ana).
 
-% Entry owners
-owner(maria, entry_1).
-owner(maria, entry_2).
+% Carlos is a registered person with no protocol.
+person(carlos).
 
-% Entries
+
+% ------------------------------------------------------------
+% ENTRIES AND OWNERS
+% ------------------------------------------------------------
+
+% Diary entries used for initial testing.
 entry(entry_1).
 entry(entry_2).
+entry(entry_3).
 
-% Entry tags
+% Maria owns all example diary entries.
+owner(maria, entry_1).
+owner(maria, entry_2).
+owner(maria, entry_3).
+
+
+% ------------------------------------------------------------
+% ENTRY TAGS
+% ------------------------------------------------------------
+
+% Tags describe the general topic of an entry.
 tag(entry_1, family).
 tag(entry_1, travel).
 tag(entry_2, birthday).
+tag(entry_3, memories).
 
-% Protocols
+
+% ------------------------------------------------------------
+% PROTOCOLS
+% ------------------------------------------------------------
+
+% A protocol is a connection between an owner and a beneficiary.
 protocol(protocol_1).
 protocol(protocol_2).
+protocol(protocol_3).
 
-% A protocol links an owner and beneficiary.
+% Protocol 1 connects Maria and Ana.
 protocol_for(protocol_1, maria, ana).
+
+% Protocol 2 connects Maria and Ana.
 protocol_for(protocol_2, maria, ana).
 
-% Grants
+% Protocol 3 connects Maria and Ana.
+protocol_for(protocol_3, maria, ana).
+
+
+% ------------------------------------------------------------
+% GRANTS
+% ------------------------------------------------------------
+
+% Ana can know that Entry 1 exists.
 grant(protocol_1, entry_1, existence).
+
+% Ana can see limited information about Entry 2.
 grant(protocol_2, entry_2, summary).
 
-% A person has no access unless a grant explicitly allows it.
-access(Person, Entry, none) :-
-    \+ grant(_, Entry, _),
-    \+ protocol_for(_, _, Person).
+% Ana can read the complete contents of Entry 3.
+grant(protocol_3, entry_3, full).
 
-% Existence access means the person can know that an entry exists.
+
+% ------------------------------------------------------------
+% ACCESS RULES
+% ------------------------------------------------------------
+
+% Existence access:
+% A person can know that an entry exists.
 access(Person, Entry, existence) :-
     person(Person),
     entry(Entry),
@@ -40,7 +97,9 @@ access(Person, Entry, existence) :-
     owner(Owner, Entry),
     grant(Protocol, Entry, existence).
 
-% Summary access means the person can see limited information.
+
+% Summary access:
+% A person can see limited information about an entry.
 access(Person, Entry, summary) :-
     person(Person),
     entry(Entry),
@@ -48,7 +107,9 @@ access(Person, Entry, summary) :-
     owner(Owner, Entry),
     grant(Protocol, Entry, summary).
 
-% Full access means the person can see the complete entry.
+
+% Full access:
+% A person can read the complete contents of an entry.
 access(Person, Entry, full) :-
     person(Person),
     entry(Entry),
@@ -56,32 +117,33 @@ access(Person, Entry, full) :-
     owner(Owner, Entry),
     grant(Protocol, Entry, full).
 
-% Deny-by-default: if no grant gives access, deny everything.
+
+% ------------------------------------------------------------
+% DENY-BY-DEFAULT RULE
+% ------------------------------------------------------------
+
+% A person is denied access when none of the access levels
+% can be proven for the requested entry.
 deny_access(Person, Entry) :-
     \+ access(Person, Entry, existence),
     \+ access(Person, Entry, summary),
     \+ access(Person, Entry, full).
 
+
+% ------------------------------------------------------------
+% HELPER RULES
+% ------------------------------------------------------------
+
+% Helper rule for checking existence access.
 can_view_existence(Person, Entry) :-
     access(Person, Entry, existence).
 
+
+% Helper rule for checking summary access.
 can_view_summary(Person, Entry) :-
     access(Person, Entry, summary).
 
+
+% Helper rule for checking full access.
 can_view_full(Person, Entry) :-
     access(Person, Entry, full).
-
-    % Ana has existence access to entry_1.
-?- access(ana, entry_1, existence).
-
-% Ana has summary access to entry_2.
-?- access(ana, entry_2, summary).
-
-% Ana does not have full access to entry_1.
-?- \+ access(ana, entry_1, full).
-
-% Ana does not have access to a nonexistent entry.
-?- \+ access(ana, entry_3, existence).
-
-% A person with no protocol is denied everything.
-?- deny_access(carlos, entry_1).
