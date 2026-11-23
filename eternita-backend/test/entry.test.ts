@@ -101,3 +101,32 @@ describe("LetterOfWishes", () => {
     }).toThrow("Recipient cannot be empty.");
   });
 });
+
+describe("Entry polymorphism", () => {
+  it("calls common methods on different entry types without type checks", () => {
+    const entries: Entry[] = [
+      new DiaryEntry(
+        "diary-polymorphic",
+        "2026-11-23",
+        "A diary entry.",
+        ["diary"]
+      ),
+      new LetterOfWishes(
+        "letter-polymorphic",
+        "2026-11-23",
+        "A letter of wishes.",
+        "2030-01-01",
+        "My future self",
+        ["letter"]
+      ),
+    ];
+
+    const descriptions = entries.map((entry) => entry.describe());
+    const summaries = entries.map((entry) => entry.summarize());
+    const readability = entries.map((entry) => entry.isReadable());
+
+    expect(descriptions).toHaveLength(2);
+    expect(summaries).toHaveLength(2);
+    expect(readability).toEqual([true, false]);
+  });
+});
