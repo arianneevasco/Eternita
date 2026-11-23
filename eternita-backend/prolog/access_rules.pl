@@ -1,19 +1,5 @@
-% ============================================================
-% Eternita - Initial Prolog Access Rules
-% Task 2.07
-%
-% This file defines the initial facts and access rules for
-% people, diary entries, protocols, tags, and grants.
-%
-% Access is deny-by-default:
-% A person has no access unless a valid protocol and grant
-% explicitly allow it.
-% ============================================================
-
-
-% ------------------------------------------------------------
 % PEOPLE
-% ------------------------------------------------------------
+
 
 % Maria is the owner of the example diary entries.
 person(maria).
@@ -25,9 +11,7 @@ person(ana).
 person(carlos).
 
 
-% ------------------------------------------------------------
 % ENTRIES AND OWNERS
-% ------------------------------------------------------------
 
 % Diary entries used for initial testing.
 entry(entry_1).
@@ -40,9 +24,8 @@ owner(maria, entry_2).
 owner(maria, entry_3).
 
 
-% ------------------------------------------------------------
 % ENTRY TAGS
-% ------------------------------------------------------------
+
 
 % Tags describe the general topic of an entry.
 tag(entry_1, family).
@@ -51,9 +34,8 @@ tag(entry_2, birthday).
 tag(entry_3, memories).
 
 
-% ------------------------------------------------------------
 % PROTOCOLS
-% ------------------------------------------------------------
+
 
 % A protocol is a connection between an owner and a beneficiary.
 protocol(protocol_1).
@@ -70,9 +52,8 @@ protocol_for(protocol_2, maria, ana).
 protocol_for(protocol_3, maria, ana).
 
 
-% ------------------------------------------------------------
 % GRANTS
-% ------------------------------------------------------------
+
 
 % Ana can know that Entry 1 exists.
 grant(protocol_1, entry_1, existence).
@@ -84,9 +65,8 @@ grant(protocol_2, entry_2, summary).
 grant(protocol_3, entry_3, full).
 
 
-% ------------------------------------------------------------
 % ACCESS RULES
-% ------------------------------------------------------------
+
 
 % Existence access:
 % A person can know that an entry exists.
@@ -118,9 +98,8 @@ access(Person, Entry, full) :-
     grant(Protocol, Entry, full).
 
 
-% ------------------------------------------------------------
 % DENY-BY-DEFAULT RULE
-% ------------------------------------------------------------
+
 
 % A person is denied access when none of the access levels
 % can be proven for the requested entry.
@@ -130,9 +109,8 @@ deny_access(Person, Entry) :-
     \+ access(Person, Entry, full).
 
 
-% ------------------------------------------------------------
 % HELPER RULES
-% ------------------------------------------------------------
+
 
 % Helper rule for checking existence access.
 can_view_existence(Person, Entry) :-
