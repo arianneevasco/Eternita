@@ -11,7 +11,7 @@ Use one row per executed test. Do not mark a test as passed until actual evidenc
 
 | Test ID | Build / commit | Tester | Execution date | Actual result | Pass / Fail / Blocked | Evidence link | Defect ID / notes |
 |---|---|---|---|---|---|---|---|
-|  |  |  |  |  |  |  |  |
+| ENV-PROLOG-01 | backend (local) | Arianne R. Evasco | 2026-11-25 | `npm run prolog-smoke` returned success | Pass | `../eternita-backend/scripts/prolog-smoke.ts` | SWI-Prolog available |
 
 ## AI-use verification log
 | Date | Feature / code | What was asked of AI | What AI returned | Changes made or rejected | Verification performed by | Result / evidence |
