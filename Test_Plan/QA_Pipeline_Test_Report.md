@@ -121,7 +121,7 @@ Evidence: `evidence/pipeline/storage-tests.png`
 
 
 
-## ## 4. Build Test
+## 4. Build Test
 
 Command executed:
 ```powershell
