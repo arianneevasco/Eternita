@@ -1,26 +1,28 @@
 # QA Pipeline Test Report
 
-Tester: Lyza  
-Date: November 24, 2026  
-Operating System: Windows (PowerShell)  
-Node.js Version: Not recorded  
-npm Version: Not recorded  
+**Tester:** Lyza Gwen B. Guatno 
+**Date:** November 24, 2026  
+**Operating System:** Windows (PowerShell)  
+**Node.js Version:** `v24.14.0`  
+**npm Version:** `11.9.0`  
 
-Implementation Branch Tested: `backend` (required branch; active branch at test time was not captured in the screenshots)  
-QA Report Branch: `Test_Plan` (target branch for this report; confirm after committing)
+**Implementation Branch Tested:** `backend`  
+**QA Report Branch:** `test-plan`
 
 
 
 ## 1. Entry Tests
 
-Command executed:
+**Command executed:**
+
 ```powershell
 npx jest test/entry.test.ts --runInBand
 ```
 
-Expected Result: Entry tests should pass.
+**Expected Result:** Entry tests should pass.
 
-Actual Result:
+**Actual Result:**
+
 ```text
 PASS test/entry.test.ts
 
@@ -30,9 +32,10 @@ Snapshots:   0 total
 Time:        5.6 s
 ```
 
-Status: PASS
+**Status: PASS**
 
-The Jest output shows passing tests for:
+The test output confirms that all nine Entry tests passed. The displayed test cases cover:
+
 - Storing date, text, and tags.
 - Describing and summarizing a diary entry.
 - Returning false for readability when text is empty.
@@ -41,21 +44,22 @@ The Jest output shows passing tests for:
 - Describing and summarizing a letter.
 - Preventing a letter from being readable before its release date.
 - Rejecting an empty recipient.
-- Calling common methods on different entry types through polymorphism.
+- Calling common methods on different entry types without type checks.
 
-Evidence: `evidence/pipeline/entry-tests.png`
+**Evidence:** `evidence/Pipeline/entry-tests.png`
 
 
 ## 2. Pipeline Tests
 
-Command executed:
+**Command executed:**
+
 ```powershell
 npx jest test/pipeline --runInBand
 ```
 
-Expected Result: Pipeline tests should pass.
+**Expected Result:** Pipeline tests should pass.
 
-Actual Result:
+**Actual Result:**
 
 ```text
 PASS test/pipeline/processEntry.test.ts
@@ -71,9 +75,10 @@ Snapshots:   0 total
 Time:        7.114 s
 ```
 
-Status: PASS
+**Status: PASS**
 
-The output confirms that all six pipeline test files passed:
+All six pipeline test files passed:
+
 - `normalizeText`
 - `extractNames`
 - `extractTopics`
@@ -81,23 +86,23 @@ The output confirms that all six pipeline test files passed:
 - `createTextDiff`
 - `processEntry`
 
-The screenshot provides the aggregate Jest result and passing test-file names. It does not display every individual assertion for input immutability, deterministic output, invalid input, whitespace-only input, or diff details. Those individual acceptance checks are therefore not independently confirmed by this screenshot.
+The supplied screenshot confirms the passing test files and aggregate result of 27 passing tests. It does not show every individual assertion for input immutability, deterministic output, invalid input, whitespace-only input, or all text-diff cases; those details are not independently confirmed by the screenshot.
 
-Evidence: `evidence/pipeline/pipeline-tests.png`
+**Evidence:** `evidence/Pipeline/pipeline-tests.png`
 
 
 
 ## 3. Storage and Hash-Chain Tests
 
-Command executed:
+**Command executed:**
 
 ```powershell
 npx jest test/storage --runInBand
 ```
 
-Expected Result: Storage and hash-chain tests should pass.
+**Expected Result:** Storage and hash-chain tests should pass.
 
-Actual Result:
+**Actual Result:**
 
 ```text
 PASS test/storage/entryStore.test.ts
@@ -109,38 +114,46 @@ Snapshots:   0 total
 Time:        5.608 s
 ```
 
-Status: PASS
+**Status: PASS**
 
-The output confirms that both storage test files passed:
+Both storage test files passed:
+
 - `entryStore.test.ts`
 - `hashChain.test.ts`
 
-The screenshot confirms the aggregate results but does not show each individual assertion for append behavior, previous-hash linking, hash determinism, tamper detection, or unsupported edit/delete operations. These detailed checks should be confirmed from the test cases if individual acceptance evidence is required.
+The previously supplied Jest output confirms that both test suites passed, with 12 tests passing in total. The aggregate output does not independently show every assertion for append behavior, previous-hash linking, hash determinism, tamper detection, or unsupported edit/delete operations.
 
-Evidence: `evidence/pipeline/storage-tests.png`
+**Evidence:** `evidence/Pipeline/storage-tests.png`
 
 
 
-## 4. Build Test
+## 4. TypeScript Build Test
 
-Command executed:
+**Command executed:**
+
 ```powershell
 npm run build
 ```
 
-Expected Result:
+**Expected Result:** The TypeScript build should complete successfully without compilation errors.
 
-The TypeScript build should complete successfully without compilation errors.
+**Actual Result:**
 
-Actual Result:
+```text
+> eternita-backend@1.0.0 build
+> tsc
 
-The build script successfully started and invoked the TypeScript compiler (`tsc`). The compiler completed without reporting any errors, and PowerShell returned to the command prompt.
+PS C:\Users\Lyza Gwen Guatno\GitHub\Eternita-\eternita-backend>
+```
 
-Status: PASS
+The screenshot shows that the build script invoked the TypeScript compiler (`tsc`). No compilation errors are displayed, and PowerShell returned to the command prompt.
 
-The TypeScript build completed successfully, and the TypeScript compiler (`tsc`) reported no compilation errors. PowerShell returned to the command prompt, confirming that the build process finished successfully.
+**Status: PASS**
 
-Evidence:`evidence/pipeline/build-result.png`
+The TypeScript build completed successfully based on the final terminal output supplied.
+
+**Evidence:** `evidence/Pipeline/build-result-incomplete.png`
+
 
 ## 5. Test Summary
 
@@ -149,9 +162,10 @@ Evidence:`evidence/pipeline/build-result.png`
 | Entry | 1 | 9 | PASS |
 | Pipeline | 6 | 27 | PASS |
 | Storage and Hash Chain | 2 | 12 | PASS |
-| TypeScript Build | Not shown | Not shown | PENDING |
+| TypeScript Build | N/A | N/A | PASS |
+| **Total Jest Tests** | **9** | **48** | **PASS** |
 
-Total Jest Result: 9 test suites passed and 39 tests passed. No failed tests are shown in the supplied Jest screenshots.
+**Overall Test Execution:** All 9 Jest test suites and 48 individual tests passed. The TypeScript build also completed successfully.
 
 
 
@@ -159,52 +173,49 @@ Total Jest Result: 9 test suites passed and 39 tests passed. No failed tests are
 
 | Acceptance Criterion | Result Based on Supplied Evidence |
 |---|---|
-| Base `Entry` class and subclasses | Entry suite passed; inheritance assertion is not individually visible |
-| `LetterOfWishes` release date and recipient | Tested and passed according to the displayed Entry test name |
+| Base `Entry` class and subclasses | Entry test suite passed; inheritance assertion is not individually visible in the screenshot |
+| `LetterOfWishes` release date and recipient | Corresponding Entry test is displayed as passed |
 | Polymorphic methods | Polymorphism test is displayed as passed |
-| Entries store date, text, and tags | Storage test is displayed as passed |
-| Separate pure pipeline functions | All six pipeline test files passed |
-| Pipeline functions do not modify inputs | Not individually verifiable from the summary screenshot |
-| Pipeline functions return new values | Not individually verifiable from the summary screenshot |
-| Same input produces same output | Not individually verifiable from the summary screenshot |
-| Empty and whitespace-only text handling | Not individually verifiable from the summary screenshot |
-| Repeated names/topics and text without names | Not individually verifiable from the summary screenshot |
-| Invalid input handling | Not individually verifiable from the summary screenshot |
+| Entries store date, text, and tags | Corresponding Entry test is displayed as passed |
+| Separate pipeline functions | All six pipeline test files passed |
+| Pipeline functions do not modify inputs | Not individually verifiable from the aggregate screenshot |
+| Pipeline functions return new values | Not individually verifiable from the aggregate screenshot |
+| Same input produces the same output | Not individually verifiable from the aggregate screenshot |
+| Empty and whitespace-only text handling | Not individually verifiable from the aggregate screenshot |
+| Repeated names/topics and text without names | Not individually verifiable from the aggregate screenshot |
+| Invalid input handling | Not individually verifiable from the aggregate screenshot |
 | Diff shows unchanged, added, and removed text | Diff test file passed; individual assertions are not visible |
 | Storage and hash-chain behavior | Both storage test files passed; individual assertions are not visible |
-| TypeScript build succeeds | Pending verification |
+| TypeScript build succeeds | PASS; compiler completed and PowerShell returned to the prompt |
 
 
 
 ## 7. Defects Found
 
-None reported in the supplied screenshots.
+**None reported in the supplied test results.**
 
-No failing Jest tests are visible in the supplied evidence. This statement is limited to the test output provided and does not establish that the implementation is free of all defects.
+No failing Jest tests or TypeScript compilation errors were shown in the supplied evidence. This finding is limited to the test execution and evidence recorded in this report; it does not establish that the implementation is free of all defects.
 
 
 
 ## 8. Final QA Decision
 
-PARTIAL PASS — BUILD VERIFICATION REQUIRED
+**FINAL RESULT: PASS**
 
-The Entry, Pipeline, and Storage test commands completed with passing results:
+The Entry, Pipeline, and Storage/Hash-chain test commands completed with passing results:
 
 - Entry: 1 test suite passed; 9 tests passed.
 - Pipeline: 6 test suites passed; 27 tests passed.
 - Storage: 2 test suites passed; 12 tests passed.
-- Combined Jest result: 9 test suites passed; 39 tests passed.
+- Combined Jest result: 9 test suites passed; 48 tests passed.
 
-The TypeScript build result remains unconfirmed because the screenshot only shows the compiler starting. The overall QA activity should not be declared fully PASS until the build completes successfully and its final output is recorded.
+The TypeScript build also completed successfully using `npm run build`. The final terminal screenshot shows the TypeScript compiler invocation, no displayed compilation errors, and the returned PowerShell prompt.
+
+Based on the recorded test results and supplied evidence, the tested backend implementation passed the executed QA test suites and build verification.
 
 
+## Conclusion
 
-## 9. QA Report and Evidence Checklist
+The QA testing of the Eternita backend implementation was successfully completed. The Entry, Pipeline, and Storage/Hash-chain test suites achieved a total of 48 passing tests across 9 test suites, with no failing tests reported. The TypeScript build also completed successfully without displaying any compilation errors. Through these tests, the implementation was evaluated based on its functionality, expected behavior, and build requirements. All recorded test results met the expected outcomes, resulting in an overall QA decision of PASS. The test results and supporting screenshots were documented and submitted through the test-plan branch of GitHub for review by the development team.
 
-- [ ] Confirm that the tests were run from the latest `backend` branch.
-- [ ] Re-run `npm run build` and record its complete final result.
-- [ ] Confirm the Node.js and npm versions using `node --version` and `npm --version`.
-- [ ] Save the screenshots in `Test_Plan/evidence/pipeline/`.
-- [ ] Switch to the `Test_Plan` branch.
-- [ ] Commit and push this report and its evidence to `origin/Test_Plan`.
-- [ ] Share the Test_Plan branch link, report link, test results, and any defects with the developer.
+
