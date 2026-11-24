@@ -6,7 +6,8 @@
   "scripts": {
     "start:dev": "ts-node src/main.ts",
     "build": "tsc",
-    "test": "jest"
+    "test": "jest",
+    "prolog-smoke": "ts-node scripts/prolog-smoke.ts"
   },
   "keywords": [],
   "author": "",
