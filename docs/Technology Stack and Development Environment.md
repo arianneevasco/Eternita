@@ -11,12 +11,12 @@ This document records the chosen programming languages, logic engine, AI model, 
 
 | Component / Layer | Paradigm | Selected Technology | Rationale & Paradigm Fit |
 |---|---|---|---|
-| Diary Model | Object-Oriented (OOP) | Python 3.11+ | Provides clear class hierarchies, encapsulation, and inheritance to model core domain entities (`Entry`, `Journal`, `Person`, `Star`, `LegacyItem`) and polymorphic writing modes. |
-| Entry Processing Pipeline | Functional Programming | Python 3.11+ | Supports pure functions, immutable data transformations (`dataclasses(frozen=True)`), comprehensions, and composable transformation steps without unintended side effects. |
+| Diary Model | Object-Oriented (OOP) | TypeScript/Node.js | Provides classes, interfaces, inheritance, encapsulation, and type-safe domain models such as `Entry`, `DiaryEntry`, and `LetterOfWishes`. |
+| Entry Processing Pipeline | Functional Programming | TypeScript/Node.js | Supports pure functions, immutable transformations, typed results, and composable pipeline steps without unintended side effects. |
 | Access Rules Engine | Logic / Declarative Programming | SWI-Prolog (`swipl`) | Expresses deny-by-default authorization rules, role relationships (Owner, Trustee, Registered Asker), and release-date constraints declaratively rather than burying security checks in imperative branches. |
 | Grounded AI Q&A Engine | Generative AI / Tool-Augmented LLM | Gemini 2.5 Flash (`gemini-2.5-flash`) | Delivers fast, low-latency responses with structured tool/function calling for grounded Q&A. **Note:** Deprecated on Google AI Studio with automatic routing to `gemini-3.5-flash-lite` starting Dec 1, 2026; keep the model ID configurable via environment variables. |
-| Q&A Orchestration & Scripting | Scripting / Glue Integration | Python + `janus-swi` + `google-genai` | Bridges the OOP/Functional core, SWI-Prolog rule evaluation, and Gemini tool calls in a single scriptable workflow, ensuring Prolog authorizes every query before any diary content reaches the LLM. |
-| Cloud Database & Auth | Persistence / Backend-as-a-Service | Firebase (Cloud Firestore + Firebase Authentication) | Stores diary entries, people, stars, trustees, and release-date records as documents in a managed cloud database, with built-in authentication for the Owner, Trustee, and Registered Asker accounts. Works directly with React Native (Expo) and the Python backend. |
+| Q&A Orchestration & Scripting | Scripting / Glue Integration | TypeScript/Node.js | Matches the backend runtime and coordinates authentication, Firestore, Prolog authorization, and future Gemini calls before diary content reaches the LLM. |
+| Cloud Database & Auth | Persistence / Backend-as-a-Service | Firebase Admin SDK, Cloud Firestore, and Firebase Authentication | Provides backend identity verification and document storage for diary entries, people, trustees, and release-date records. |
 | Media Storage | Cloud Media / CDN | Cloudinary | Stores and serves user-uploaded images (such as the one image per person that becomes a constellation) and resizes them on delivery, keeping binary files out of the database. |
 | User Interface | Component-Based UI | React Native (Expo + TypeScript) | Aligns with the existing frontend prototype, providing type-safe screens and state flows for Owner, Trustee, and Registered Asker interactions. |
 
@@ -26,11 +26,11 @@ This document records the chosen programming languages, logic engine, AI model, 
 
 ### Deterministic Security Before LLM Generation
 
-Access control is enforced strictly by SWI-Prolog (deny-by-default) before the Python Q&A script retrieves entries or invokes Gemini. Prompt instructions alone are never relied upon to protect private diary entries.
+Access control is enforced strictly by SWI-Prolog (deny-by-default) before the TypeScript/Node.js backend retrieves entries or invokes Gemini. Prompt instructions alone are never relied upon to protect private diary entries.
 
 ### Zero Existence Leakage
 
-When SWI-Prolog denies access (or an entry does not exist), the Python orchestrator returns a uniform neutral refusal without revealing whether matching records exist.
+When SWI-Prolog denies access (or an entry does not exist), the TypeScript/Node.js orchestrator returns a uniform neutral refusal without revealing whether matching records exist.
 
 ### Configurable Model Endpoint
 
@@ -38,7 +38,7 @@ Because `gemini-2.5-flash` routes automatically to `gemini-3.5-flash-lite` start
 
 ### Protected Data Layer (Firebase)
 
-Firestore Security Rules are set to deny all direct client reads and writes of diary data, as a second layer behind the Prolog rules. Diary content is read only by the Python backend through the Firebase Admin SDK, and the service account credentials are never shipped in the mobile app. The app uses only the public Firebase client configuration and Firebase Authentication.
+Firestore Security Rules are set to deny all direct client reads and writes of diary data, as a second layer behind the Prolog rules. Diary content is read only by the TypeScript/NestJS backend through the Firebase Admin SDK, and the service account credentials are never shipped in the mobile app. The app uses only the public Firebase client configuration and Firebase Authentication.
 
 ### Controlled Media Access (Cloudinary)
 
@@ -50,20 +50,30 @@ Uploads are signed by the backend so the Cloudinary API secret never reaches the
 
 All project dependencies are tracked in version-controlled manifest files in the repository.
 
-### Backend / Logic / AI (`requirements.txt`)
+### Backend (`eternita-backend/package.json` and `package-lock.json`)
 
 ```text
-janus-swi>=1.5.0
-google-genai>=1.0.0
-python-dotenv>=1.0.0
-firebase-admin>=6.0.0
-cloudinary>=1.40.0
-pytest>=8.0.0
+@nestjs/common
+@nestjs/core
+@nestjs/platform-express
+firebase-admin
+dotenv
+zod
+typescript
+ts-node
+jest
+ts-jest
+@types/node
 ```
 
-### Frontend (`package.json`)
+### Frontend and future integrations
 
-Tracks Expo, React Native, TypeScript, and `firebase` (Firebase JS SDK) dependencies in the frontend workspace.
+SWI-Prolog is an external prerequisite and must be installed separately. It
+must be available as `swipl` on the system `PATH`.
+
+React Native/Expo, Gemini, and Cloudinary dependencies will be added to their
+own manifests when those integrations are implemented. They are not active
+backend dependencies in this repository.
 
 ### Environment Variables (`.env.example`)
 
@@ -85,47 +95,30 @@ CLOUDINARY_API_SECRET=your_api_secret            # backend only, never in the mo
 
 ## 5. Reproducible Setup & Cross-Language Smoke Test
 
-Every team member must verify that their local machine can execute a SWI-Prolog rule directly from Python.
+Every team member must verify that the TypeScript/Node.js backend can execute a
+SWI-Prolog rule.
 
 ### Prerequisites
 
-- Python 3.11+ installed and available on `PATH`.
 - SWI-Prolog (`swipl`) installed and available on `PATH`.
-- Node.js (LTS) installed for the Expo frontend.
+- Node.js and npm installed.
 - Access to the team Firebase project and Cloudinary account (credentials shared privately and copied into a local `.env`, which is never committed).
 
 ### Verification Files
 
-**`tests/smoke/rules_smoke.pl`**
+**`eternita-backend/scripts/prolog-smoke.ts`**
 
-```prolog
-% Deny-by-default sample access rule for environment verification
-can_read(asker_alice, public_note).
-can_read(_, _) :- fail.
-```
-
-**`tests/smoke/smoke_prolog.py`**
-
-```python
-import pathlib
-import janus_swi as janus
-
-rules_path = pathlib.Path(__file__).with_name("rules_smoke.pl")
-janus.consult(str(rules_path))
-
-allowed = janus.query_once("can_read(asker_alice, public_note)")["truth"]
-denied = janus.query_once("can_read(asker_alice, private_note)")["truth"]
-
-assert allowed is True, "Expected asker_alice to read public_note"
-assert denied is False, "Expected asker_alice to be denied private_note"
-print("SUCCESS: Python -> SWI-Prolog smoke test passed.")
+```typescript
+// The smoke test starts SWI-Prolog and calls an access rule from Node.js.
+access(ana, entry_1, existence)
 ```
 
 ### Run Command
 
-```bash
-pip install -r requirements.txt
-python tests/smoke/smoke_prolog.py
+```powershell
+cd eternita-backend
+npm install
+npm run prolog-smoke
 ```
 
 ---
