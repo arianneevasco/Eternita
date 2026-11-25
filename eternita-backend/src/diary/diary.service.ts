@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { getDb } from "../config/firebase";
 import { PolicyEvaluationService } from "../policy/policy-evaluation.service";
 import { CreateEntryDto, EditEntryDto } from "./dto";
@@ -75,7 +75,10 @@ export class DiaryService {
     return { entryId: entrySnapshot.id, ...data };
   }
 
-  async editEntry(ownerUid: string, entryId: string, dto: EditEntryDto) {
+  async editEntry(requesterUid: string, ownerUid: string, entryId: string, dto: EditEntryDto) {
+    if (requesterUid !== ownerUid) {
+      throw new ForbiddenException("Only the owner can edit an entry.");
+    }
     const entryReference = this.db
       .collection("users")
       .doc(ownerUid)
@@ -117,7 +120,10 @@ export class DiaryService {
     return { entryId, currentVersion: nextVersion, updatedAt: now };
   }
 
-  async setFavorite(ownerUid: string, entryId: string, isFavorite: boolean) {
+  async setFavorite(requesterUid: string, ownerUid: string, entryId: string, isFavorite: boolean) {
+    if (requesterUid !== ownerUid) {
+      throw new ForbiddenException("Only the owner can favorite an entry.");
+    }
     const entryReference = this.db
       .collection("users")
       .doc(ownerUid)
@@ -133,7 +139,10 @@ export class DiaryService {
     return { entryId, isFavorite };
   }
 
-  async hideEntry(ownerUid: string, entryId: string) {
+  async hideEntry(requesterUid: string, ownerUid: string, entryId: string) {
+    if (requesterUid !== ownerUid) {
+      throw new ForbiddenException("Only the owner can hide an entry.");
+    }
     const entryReference = this.db
       .collection("users")
       .doc(ownerUid)
@@ -165,7 +174,10 @@ export class DiaryService {
     }));
   }
 
-  async publishDraft(ownerUid: string, entryId: string) {
+  async publishDraft(requesterUid: string, ownerUid: string, entryId: string) {
+    if (requesterUid !== ownerUid) {
+      throw new ForbiddenException("Only the owner can publish an entry.");
+    }
     const entryReference = this.db
       .collection("users")
       .doc(ownerUid)
@@ -306,7 +318,11 @@ export class DiaryService {
   ) {
     const entry = await this.getEntry(ownerUid, entryId);
 
-    if (!entry || entry.isHidden) {
+    if (!entry) {
+      return safeRefusal("Entry not available.");
+    }
+
+    if (requesterUid !== ownerUid && entry.isHidden) {
       return safeRefusal("Entry not available.");
     }
 
@@ -314,13 +330,20 @@ export class DiaryService {
       return safeRefusal("Entry is not available yet.");
     }
 
-    const decision = await this.policyEvaluation.evaluateAccess({
-      requesterUid,
-      ownerUid,
-      entryId,
-      requestedAccess,
-      releaseDate: entry.releaseDate,
-    });
+    const decision = requesterUid === ownerUid
+      ? { allowed: true, reason: "Owner access granted." }
+      : await this.policyEvaluation.evaluateAccess({
+          requesterUid,
+          ownerUid,
+          entryId,
+          requestedAccess,
+          releaseDate: entry.releaseDate,
+          entry: {
+            entryId,
+            people: entry.people,
+            tags: entry.tags,
+          },
+        });
 
     if (!decision.allowed) {
       return safeRefusal(decision.reason);
@@ -343,7 +366,7 @@ export class DiaryService {
     return {
       accessGranted: true,
       title: entry.title,
-      content: entry.content,
+      content: entry.finalText ?? entry.originalText,
       createdAt: entry.createdAt,
     };
   }

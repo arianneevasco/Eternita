@@ -15,8 +15,42 @@ export async function evaluatePolicy(
   input: PolicyEvaluationInput
 ): Promise<PolicyEvaluationResult> {
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: PolicyEvaluationResult) => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        resolve(result);
+      }
+    };
+    const timeout = setTimeout(() => {
+      finish({ allowed: false, error: "Prolog evaluation timed out." });
+    }, 2000);
+    const failClosed = (error: unknown) => finish({ allowed: false, error: String(error) });
+
+    try {
     const session = pl.create(1000);
-    const program = `${input.facts}\naccess_allowed(Person, Entry, Access) :- grant(Person, Entry, Access).`;
+      const program = `${input.facts}
+deny(_, _, _) :- fail.
+access_level_rank(existence, 1).
+access_level_rank(summary, 2).
+access_level_rank(full, 3).
+
+denies_at_or_above(Viewer, Entry, Level) :-
+    deny(Viewer, Entry, DeniedLevel),
+    access_level_rank(DeniedLevel, DeniedRank),
+    access_level_rank(Level, RequestedRank),
+    DeniedRank =< RequestedRank.
+
+grants_at_or_above(Viewer, Entry, Level) :-
+    grant(Viewer, Entry, GrantedLevel),
+    access_level_rank(GrantedLevel, GrantedRank),
+    access_level_rank(Level, RequestedRank),
+    GrantedRank >= RequestedRank.
+
+access_allowed(Viewer, Entry, Level) :-
+    grants_at_or_above(Viewer, Entry, Level),
+    \\+ denies_at_or_above(Viewer, Entry, Level).`;
 
     session.consult(program, {
       success: () => {
@@ -24,33 +58,21 @@ export async function evaluatePolicy(
           success: () => {
             session.answer({
               success: () => {
-                resolve({ allowed: true });
+                finish({ allowed: true });
               },
               fail: () => {
-                resolve({ allowed: false });
+                finish({ allowed: false });
               },
-              error: (error: unknown) => {
-                resolve({
-                  allowed: false,
-                  error: `Prolog evaluation failed: ${String(error)}`
-                });
-              }
+              error: failClosed,
             });
           },
-          error: (error: unknown) => {
-            resolve({
-              allowed: false,
-              error: `Invalid Prolog query: ${String(error)}`
-            });
-          }
+          error: failClosed,
         });
       },
-      error: (error: unknown) => {
-        resolve({
-          allowed: false,
-          error: `Invalid Prolog facts: ${String(error)}`
-        });
-      }
+      error: failClosed,
     });
+    } catch (error) {
+      failClosed(error);
+    }
   });
 }

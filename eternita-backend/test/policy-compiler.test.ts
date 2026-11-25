@@ -13,22 +13,27 @@ protocol maria:
 `;
 
 test("compiles permissions and preserves deny rules", () => {
-  const result = compilePolicy(policy);
+  const result = compilePolicy(policy, [
+    { entryId: "entry_family", tags: ["family"] },
+    { entryId: "entry_travel", tags: ["travel"] },
+    { entryId: "entry_health", tags: ["health"] },
+    { entryId: "entry_maria", people: ["maria"] },
+  ]);
 
   expect(result.facts).toContain(
-    "allow(maria,existence,mentions_maria)."
+    "grant(maria,entry_maria,existence)."
   );
 
   expect(result.facts).toContain(
-    "allow(maria,summary,tag_family)."
+    "grant(maria,entry_family,summary)."
   );
 
   expect(result.facts).toContain(
-    "allow(maria,full,tag_travel)."
+    "grant(maria,entry_travel,full)."
   );
 
   expect(result.facts).toContain(
-    "deny(maria,summary,tag_health)."
+    "deny(maria,entry_health,summary)."
   );
 
   expect(result.defaultMode).toBe("verbatim");

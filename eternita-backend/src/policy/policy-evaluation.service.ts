@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PolicyStorageService } from "./policy-storage.service";
 import { evaluatePolicy } from "./prolog-evaluator";
+import { compilePolicy } from "./compiler";
 import { isReleaseDateReached } from "../diary/release-date";
 
 export type AccessLevel = "existence" | "summary" | "full";
@@ -11,6 +12,11 @@ export interface AccessRequest {
   entryId: string;
   requestedAccess: AccessLevel;
   releaseDate?: string;
+  entry?: {
+    entryId: string;
+    people?: string[];
+    tags?: string[];
+  };
 }
 
 export interface AccessDecision {
@@ -45,27 +51,43 @@ export class PolicyEvaluationService {
       };
     }
 
-    const facts = (
-      policy as typeof policy & { compiledFacts: string[] }
-    ).compiledFacts.join("\n");
+    try {
+      const storedPolicy = policy as typeof policy & {
+        policyText?: string;
+        compiledFacts?: string[];
+      };
+      const facts = request.entry && typeof storedPolicy.policyText === "string"
+        ? compilePolicy(storedPolicy.policyText, [request.entry]).facts.join("\n")
+        : (storedPolicy.compiledFacts ?? []).join("\n");
 
-    const result = await evaluatePolicy({
-      facts,
-      query: `access_allowed(${request.requesterUid}, ${request.entryId}, ${request.requestedAccess}).`,
-    });
+      const atom = (value: string) =>
+        /^[a-z][a-zA-Z0-9_]*$/.test(value)
+          ? value
+          : `'${value.replace(/'/g, "''")}'`;
 
-    if (result.error) {
+      const result = await evaluatePolicy({
+        facts,
+        query: `access_allowed(${atom(request.requesterUid)}, ${atom(request.entryId)}, ${request.requestedAccess}).`,
+      });
+
+      if (result.error) {
+        return {
+          allowed: false,
+          reason: "Access could not be evaluated.",
+        };
+      }
+
+      return {
+        allowed: result.allowed,
+        reason: result.allowed
+          ? "Access granted by policy."
+          : "Access denied by policy.",
+      };
+    } catch {
       return {
         allowed: false,
         reason: "Access could not be evaluated.",
       };
     }
-
-    return {
-      allowed: result.allowed,
-      reason: result.allowed
-        ? "Access granted by policy."
-        : "Access denied by policy.",
-    };
   }
 }

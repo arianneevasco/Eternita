@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -46,11 +47,15 @@ export class DiaryController {
   @Get(":entryId")
   getOne(
     @Req() request: any,
-    @Param("entryId") entryId: string
+    @Param("entryId") entryId: string,
+    @Query("ownerUid") ownerUid?: string,
+    @Query("access") access: "existence" | "summary" | "full" = "full",
   ) {
-    return this.diaryService.getEntry(
+    return this.diaryService.getEntryForViewer(
       request.uid,
-      entryId
+      ownerUid ?? request.uid,
+      entryId,
+      access,
     );
   }
 
@@ -59,10 +64,12 @@ export class DiaryController {
     @Req() request: any,
     @Param("entryId") entryId: string,
     @Body(new ZodValidationPipe(editEntrySchema))
-    body: EditEntryDto
+    body: EditEntryDto,
+    @Query("ownerUid") ownerUid?: string,
   ) {
     return this.diaryService.editEntry(
       request.uid,
+      ownerUid ?? request.uid,
       entryId,
       body
     );
@@ -72,18 +79,21 @@ export class DiaryController {
   publish(
     @Req() request: any,
     @Param("entryId") entryId: string,
+    @Query("ownerUid") ownerUid?: string,
   ) {
-    return this.diaryService.publishDraft(request.uid, entryId);
+    return this.diaryService.publishDraft(request.uid, ownerUid ?? request.uid, entryId);
   }
 
   @Patch(":entryId/favorite")
   favorite(
     @Req() request: any,
     @Param("entryId") entryId: string,
-    @Body() body: { isFavorite: boolean }
+    @Body() body: { isFavorite: boolean },
+    @Query("ownerUid") ownerUid?: string,
   ) {
     return this.diaryService.setFavorite(
       request.uid,
+      ownerUid ?? request.uid,
       entryId,
       body.isFavorite
     );
@@ -92,10 +102,12 @@ export class DiaryController {
   @Delete(":entryId")
   hide(
     @Req() request: any,
-    @Param("entryId") entryId: string
+    @Param("entryId") entryId: string,
+    @Query("ownerUid") ownerUid?: string,
   ) {
     return this.diaryService.hideEntry(
       request.uid,
+      ownerUid ?? request.uid,
       entryId
     );
   }

@@ -5,8 +5,17 @@ import { compilePolicy } from "./compiler";
 @Injectable()
 export class PolicyStorageService {
   async savePolicy(ownerUid: string, policyText: string) {
-    const compiled = compilePolicy(policyText);
     const db = getDb();
+    const entriesSnapshot = await db
+      .collection("users")
+      .doc(ownerUid)
+      .collection("entries")
+      .get();
+    const compiled = compilePolicy(policyText, entriesSnapshot.docs.map((document) => ({
+      entryId: document.id,
+      people: (document.data().people as string[] | undefined) ?? [],
+      tags: (document.data().tags as string[] | undefined) ?? [],
+    })));
 
     const policyReference = db
       .collection("users")

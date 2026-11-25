@@ -20,6 +20,12 @@ export interface CompiledPolicy {
   defaultMode: WritingMode;
 }
 
+export interface PolicyEntry {
+  entryId: string;
+  people?: string[];
+  tags?: string[];
+}
+
 const NAME =
   /^[a-z][a-z0-9_]{0,30}$/;
 
@@ -50,8 +56,17 @@ function letterId(title: string): string {
     .digest("hex");
 }
 
+function prologAtom(value: string): string {
+  if (/^[a-z][a-zA-Z0-9_]*$/.test(value)) {
+    return value;
+  }
+
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 export function compilePolicy(
-  source: string
+  source: string,
+  entries: PolicyEntry[] = [],
 ): CompiledPolicy {
   const program: PolicyProgram =
     parsePolicy(source);
@@ -75,18 +90,22 @@ export function compilePolicy(
       if (statement.type === "see") {
         const action = statement.kind;
 
-        const topic =
-          statement.by === "mentions"
-            ? `mentions_${statement.value}`
-            : `tag_${statement.value}`;
+        for (const entry of entries) {
+          const values = statement.by === "mentions"
+            ? entry.people ?? []
+            : entry.tags ?? [];
 
-        const predicate = statement.allow
-          ? "allow"
-          : "deny";
+          if (!values.includes(statement.value)) {
+            continue;
+          }
 
-        facts.push(
-          `${predicate}(${viewer},${action},${topic}).`
-        );
+          const predicate = statement.allow ? "grant" : "deny";
+          const fact = `${predicate}(${prologAtom(viewer)},${prologAtom(entry.entryId)},${action}).`;
+
+          if (!facts.includes(fact)) {
+            facts.push(fact);
+          }
+        }
       }
 
       if (statement.type === "release") {
@@ -101,10 +120,6 @@ export function compilePolicy(
 
         releaseKeys.add(key);
 
-        facts.push(
-          `release(${id},${statement.to},date(${statement.on})).`
-        );
-
         releases.push({
           id,
           to: statement.to,
@@ -118,8 +133,6 @@ export function compilePolicy(
           statement.to,
           statement.line
         );
-
-        facts.push(`custody(${recipient}).`);
 
         custodyDeclarations.push({
           to: recipient,
