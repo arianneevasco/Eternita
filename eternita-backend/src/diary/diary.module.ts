@@ -4,8 +4,10 @@ import { FirebaseAuthService } from "../auth/firebase-auth.service";
 import { DiaryController } from "./diary.controller";
 import { DiaryService } from "./diary.service";
 import { HashChainService } from "./hash-chain.service";
+import { PolicyModule } from "../policy/policy.module";
 
 @Module({
+  imports: [PolicyModule],
   controllers: [DiaryController],
   providers: [
     DiaryService,

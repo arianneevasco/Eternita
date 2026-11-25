@@ -5,6 +5,7 @@ const policy = `
 protocol maria:
   may see existence of entries mentioning maria
   may read summary of entries tagged family
+  may read full of entries tagged travel
   may not read summary of entries tagged health
   release letter To my daughter to maria when date 2040-05-01
   transfer custody to juan
@@ -20,6 +21,10 @@ test("compiles permissions and preserves deny rules", () => {
 
   expect(result.facts).toContain(
     "allow(maria,summary,tag_family)."
+  );
+
+  expect(result.facts).toContain(
+    "allow(maria,full,tag_travel)."
   );
 
   expect(result.facts).toContain(

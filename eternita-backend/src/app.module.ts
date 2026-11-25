@@ -5,10 +5,11 @@ import { AuthGuard } from "./auth/auth.guard";
 import { FirebaseAuthService } from "./auth/firebase-auth.service";
 import { PeopleController } from "./people/people.controller";
 import { DiaryModule } from "./diary/diary.module";
+import { PolicyModule } from "./policy/policy.module";
 
 
 @Module({
-  imports: [DiaryModule],
+  imports: [DiaryModule, PolicyModule],
   controllers: [HealthController, AccountController, PeopleController],
   providers: [AuthGuard, FirebaseAuthService],
 })

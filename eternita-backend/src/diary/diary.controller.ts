@@ -68,6 +68,14 @@ export class DiaryController {
     );
   }
 
+  @Post(":entryId/publish")
+  publish(
+    @Req() request: any,
+    @Param("entryId") entryId: string,
+  ) {
+    return this.diaryService.publishDraft(request.uid, entryId);
+  }
+
   @Patch(":entryId/favorite")
   favorite(
     @Req() request: any,
