@@ -1,5 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { Injectable } from "@nestjs/common";
+import type { PermittedEntry } from "./access-context";
+import { buildGeminiPrompt } from "./gemini-prompt";
+
+export interface GeminiAnswer {
+  answer: string;
+  modelName: string;
+  tokenUsage?: unknown;
+}
 
 @Injectable()
 export class GeminiService {
@@ -9,33 +17,19 @@ export class GeminiService {
 
   async answerQuestion(
     question: string,
-    permittedEntries: any[],
-  ) {
-    const context = permittedEntries
-      .map((entry) => {
-        return `Entry ${entry.entryId} (${entry.entryDate}): ${entry.summary}`;
-      })
-      .join("\n");
-
-    const prompt = `
-Answer only using the entries below.
-Do not invent memories, people, dates, or facts.
-Do not pretend to be the owner.
-If the answer is not in the entries, say you cannot answer.
-Cite the entry date for every claim.
-
-Entries:
-${context}
-
-Question:
-${question}
-`;
+    permittedEntries: PermittedEntry[],
+  ): Promise<GeminiAnswer> {
+    const prompt = buildGeminiPrompt(question, permittedEntries);
 
     const response = await this.ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt
     });
 
-    return response.text ?? "";
+    return {
+      answer: response.text ?? "",
+      modelName: "gemini-2.5-flash",
+      tokenUsage: response.usageMetadata,
+    };
   }
 }
