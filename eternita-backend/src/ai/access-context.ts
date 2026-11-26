@@ -1,4 +1,5 @@
 import type { AccessLevel, AccessRequest, AccessDecision } from "../policy/policy-evaluation.service";
+import { isReleaseDateReached } from "../diary/release-date";
 
 export interface CandidateEntry {
   entryId: string;
@@ -44,6 +45,10 @@ export async function selectPermittedEntries(
   const permitted: PermittedEntry[] = [];
 
   for (const entry of candidates) {
+    if (entry.isHidden || !isReleaseDateReached(entry.releaseDate)) {
+      continue;
+    }
+
     let accessLevel: AccessLevel | undefined;
     let evaluationFailed = false;
 
@@ -81,7 +86,7 @@ export async function selectPermittedEntries(
       }
     }
 
-    if (!accessLevel || evaluationFailed || (requesterUid !== ownerUid && entry.isHidden)) {
+    if (!accessLevel || evaluationFailed) {
       continue;
     }
 

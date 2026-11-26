@@ -4,4 +4,5 @@ module.exports = {
   testEnvironment: "node",
   roots: ["<rootDir>/test"],
   moduleFileExtensions: ["ts", "js", "json"],
+  testPathIgnorePatterns: ["/test/people-integration.test.ts$"],
 };

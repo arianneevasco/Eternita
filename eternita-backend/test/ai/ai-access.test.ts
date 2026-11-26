@@ -109,6 +109,24 @@ describe("AI access selection", () => {
     expect(evaluate).not.toHaveBeenCalled();
     expect(selected[0].accessLevel).toBe("full");
   });
+
+  it("excludes hidden and unreleased entries from every AI context", async () => {
+    const evaluate = jest.fn(async () => ({ allowed: true, reason: "allowed" }));
+    const selected = await selectPermittedEntries(
+      "owner",
+      "owner",
+      [
+        { ...candidate("hidden"), isHidden: true },
+        { ...candidate("future"), releaseDate: "2999-01-01" },
+        candidate("visible"),
+      ],
+      evaluate,
+      (entry, level) => new CitationService().formatEntryCitation(entry, level),
+    );
+
+    expect(selected.map((entry) => entry.entryId)).toEqual(["visible"]);
+    expect(evaluate).not.toHaveBeenCalled();
+  });
 });
 
 describe("AI citations, prompt privacy, and logging", () => {
