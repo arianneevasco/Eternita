@@ -5,9 +5,10 @@ import { DiaryController } from "./diary.controller";
 import { DiaryService } from "./diary.service";
 import { HashChainService } from "./hash-chain.service";
 import { PolicyModule } from "../policy/policy.module";
+import { LegacyModule } from "../legacy/legacy.module";
 
 @Module({
-  imports: [PolicyModule],
+  imports: [PolicyModule, LegacyModule],
   controllers: [DiaryController],
   providers: [
     DiaryService,

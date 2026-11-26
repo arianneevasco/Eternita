@@ -65,11 +65,10 @@ export class DiaryController {
     @Param("entryId") entryId: string,
     @Body(new ZodValidationPipe(editEntrySchema))
     body: EditEntryDto,
-    @Query("ownerUid") ownerUid?: string,
   ) {
     return this.diaryService.editEntry(
       request.uid,
-      ownerUid ?? request.uid,
+      request.uid,
       entryId,
       body
     );
@@ -79,9 +78,8 @@ export class DiaryController {
   publish(
     @Req() request: any,
     @Param("entryId") entryId: string,
-    @Query("ownerUid") ownerUid?: string,
   ) {
-    return this.diaryService.publishDraft(request.uid, ownerUid ?? request.uid, entryId);
+    return this.diaryService.publishDraft(request.uid, request.uid, entryId);
   }
 
   @Patch(":entryId/favorite")
@@ -89,11 +87,10 @@ export class DiaryController {
     @Req() request: any,
     @Param("entryId") entryId: string,
     @Body() body: { isFavorite: boolean },
-    @Query("ownerUid") ownerUid?: string,
   ) {
     return this.diaryService.setFavorite(
       request.uid,
-      ownerUid ?? request.uid,
+      request.uid,
       entryId,
       body.isFavorite
     );
@@ -103,11 +100,10 @@ export class DiaryController {
   hide(
     @Req() request: any,
     @Param("entryId") entryId: string,
-    @Query("ownerUid") ownerUid?: string,
   ) {
     return this.diaryService.hideEntry(
       request.uid,
-      ownerUid ?? request.uid,
+      request.uid,
       entryId
     );
   }

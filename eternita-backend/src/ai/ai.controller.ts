@@ -8,6 +8,9 @@ import { AiUseLogService } from "./ai-use-log.service";
 import type { CandidateEntry } from "./access-context";
 import { getAuthenticatedViewerUid } from "./access-context";
 import { hashPrompt, normalizePromptCategory } from "./ai-log";
+import { GEMINI_MODEL_ID } from "./gemini.config";
+import { GeminiServiceError } from "./gemini-runtime";
+import { LegacyService } from "../legacy/legacy.service";
 
 interface AiAskBody {
   ownerUid: string;
@@ -23,6 +26,7 @@ export class AiController {
     private readonly geminiService: GeminiService,
     private readonly citations: CitationService,
     private readonly aiUseLog: AiUseLogService,
+    private readonly legacyService: LegacyService,
   ) {}
 
   @Post("ask")
@@ -32,10 +36,26 @@ export class AiController {
   ) {
     const startedAt = Date.now();
     const requesterUid = getAuthenticatedViewerUid(request);
-    const modelName = "gemini-2.5-flash";
+    const modelName = GEMINI_MODEL_ID;
     let selectedEntries: Awaited<ReturnType<ContextFilterService["filterEntries"]>> = [];
 
     try {
+      if (requesterUid !== body.ownerUid) {
+        const legacyGrant = await this.legacyService.getActiveLegacyGrant(requesterUid, body.ownerUid);
+        if (!legacyGrant.active) {
+          const answer = "I cannot answer because no permitted records are available.";
+          await this.writeLog(requesterUid, body, selectedEntries, modelName, "denied", startedAt);
+          return {
+            answer,
+            status: "denied",
+            error: { code: "NO_ACTIVE_LEGACY_GRANT", message: answer },
+            citations: [],
+            selectedEntryIds: [],
+            accessLevels: {},
+          };
+        }
+      }
+
       const entries = await this.getEntries(body.ownerUid);
 
       selectedEntries = (await this.contextFilter.filterEntries(
@@ -47,7 +67,14 @@ export class AiController {
       if (selectedEntries.length === 0) {
         const answer = "I cannot answer because no permitted records are available.";
         await this.writeLog(requesterUid, body, selectedEntries, modelName, "denied", startedAt);
-        return { answer, citations: [], selectedEntryIds: [], accessLevels: {} };
+        return {
+          answer,
+          status: "denied",
+          error: { code: "NO_PERMITTED_ENTRIES", message: answer },
+          citations: [],
+          selectedEntryIds: [],
+          accessLevels: {},
+        };
       }
 
       const result = await this.geminiService.answerQuestion(body.question, selectedEntries);
@@ -56,14 +83,24 @@ export class AiController {
 
       return {
         answer,
+        status: "success",
+        error: null,
         citations: selectedEntries.map((entry) => entry.citation),
         selectedEntryIds: selectedEntries.map((entry) => entry.entryId),
         accessLevels: Object.fromEntries(selectedEntries.map((entry) => [entry.entryId, entry.accessLevel])),
       };
     } catch (error) {
       await this.writeLog(requesterUid, body, selectedEntries, modelName, "error", startedAt, error);
+      const code = error instanceof GeminiServiceError
+        ? error.code
+        : "AI_BACKEND_ERROR";
       return {
         answer: "I cannot answer this request right now.",
+        status: "error",
+        error: {
+          code,
+          message: "The AI service could not complete the request.",
+        },
         citations: [],
         selectedEntryIds: [],
         accessLevels: {},

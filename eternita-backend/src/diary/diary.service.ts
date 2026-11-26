@@ -4,11 +4,13 @@ import { PolicyEvaluationService } from "../policy/policy-evaluation.service";
 import { CreateEntryDto, EditEntryDto } from "./dto";
 import { isReleaseDateReached } from "./release-date";
 import { calculateEntryHash } from "./entry-hash";
+import { LegacyService } from "../legacy/legacy.service";
 
 @Injectable()
 export class DiaryService {
   constructor(
     private readonly policyEvaluation: PolicyEvaluationService,
+    private readonly legacyService: LegacyService,
   ) {}
 
   private get db() {
@@ -324,6 +326,13 @@ export class DiaryService {
 
     if (requesterUid !== ownerUid && entry.isHidden) {
       return safeRefusal("Entry not available.");
+    }
+
+    if (requesterUid !== ownerUid) {
+      const legacyGrant = await this.legacyService.getActiveLegacyGrant(requesterUid, ownerUid);
+      if (!legacyGrant.active) {
+        return safeRefusal("Entry not available.");
+      }
     }
 
     if (!isReleaseDateReached(entry.releaseDate)) {

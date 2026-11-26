@@ -10,6 +10,7 @@ import {
   normalizeTokenUsage,
 } from "../../src/ai/ai-log";
 import { buildGeminiPrompt } from "../../src/ai/gemini-prompt";
+import { GEMINI_MODEL_ID } from "../../src/ai/gemini.config";
 
 const candidate = (entryId: string) => ({
   entryId,
@@ -156,7 +157,7 @@ describe("AI citations, prompt privacy, and logging", () => {
       },
       selectedEntryIds: ["entry-1"],
       accessLevels: { "entry-1": "summary" },
-      modelName: "gemini-2.5-flash",
+      modelName: GEMINI_MODEL_ID,
       responseStatus: "success",
       latencyMs: 50,
     });
@@ -167,7 +168,7 @@ describe("AI citations, prompt privacy, and logging", () => {
       promptLength: 12,
       selectedEntryIds: ["entry-1"],
       accessLevels: { "entry-1": "summary" },
-      modelName: "gemini-2.5-flash",
+      modelName: GEMINI_MODEL_ID,
       responseStatus: "success",
       latencyMs: 50,
       error: null,
@@ -198,7 +199,7 @@ describe("AI citations, prompt privacy, and logging", () => {
       promptHash: hashPrompt(rawPrompt),
       selectedEntryIds: [],
       accessLevels: {},
-      modelName: "gemini-2.5-flash",
+      modelName: GEMINI_MODEL_ID,
       responseStatus: "denied",
       latencyMs: 1,
     });
@@ -235,7 +236,7 @@ describe("AI citations, prompt privacy, and logging", () => {
       promptHash: hashPrompt(""),
       selectedEntryIds: [],
       accessLevels: {},
-      modelName: "gemini-2.5-flash",
+      modelName: GEMINI_MODEL_ID,
       responseStatus: "denied",
       latencyMs: 1,
     });

@@ -7,10 +7,11 @@ import { PeopleController } from "./people/people.controller";
 import { DiaryModule } from "./diary/diary.module";
 import { PolicyModule } from "./policy/policy.module";
 import { AiModule } from "./ai/ai.module";
+import { LegacyModule } from "./legacy/legacy.module";
 
 
 @Module({
-  imports: [DiaryModule, PolicyModule, AiModule],
+  imports: [DiaryModule, PolicyModule, AiModule, LegacyModule],
   controllers: [HealthController, AccountController, PeopleController],
   providers: [AuthGuard, FirebaseAuthService],
 })
