@@ -19,6 +19,11 @@ jest.setTimeout(30_000);
     entryId: string,
     overrides: Record<string, unknown> = {},
   ) {
+    await getDb().collection("users").doc(ownerUid).set({
+      uid: ownerUid,
+      role: "owner",
+      deceased: false,
+    }, { merge: true });
     const entry = {
       entryId,
       ownerUid,
@@ -360,5 +365,107 @@ protocol recipient:
       .expect(201);
     expect(filtered.body.selectedEntryIds).not.toContain(hidden.entryId);
     expect(filtered.body.selectedEntryIds).not.toContain(future.entryId);
+  });
+
+  it.each([
+    [{ question: "question" }, "missing ownerUid"],
+    [{ ownerUid: "owner" }, "missing question"],
+    [{ ownerUid: "", question: "question" }, "empty ownerUid"],
+    [{ ownerUid: "owner", question: "" }, "empty question"],
+    [{ ownerUid: 123, question: "question" }, "invalid ownerUid type"],
+    [{ ownerUid: "owner", question: 123 }, "invalid question type"],
+    [{ ownerUid: "owner", question: "question", unexpected: true }, "unexpected field"],
+  ])("rejects malformed AI request: %s", async (body, _caseName) => {
+    await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", "recipient")
+      .send(body)
+      .expect(400);
+  });
+
+  it("rejects unknown owner targets before grant or entry access", async () => {
+    await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", "recipient")
+      .send({ ownerUid: unique("missing-owner"), question: "question" })
+      .expect(404);
+  });
+
+  it("rejects unauthenticated AI requests", async () => {
+    await request(app.getHttpServer())
+      .post("/ai/ask")
+      .send({ ownerUid: unique("owner"), question: "question" })
+      .expect(401);
+  });
+
+  it.each([
+    ["denied", "denied"],
+    ["pending", "pending"],
+    ["cancelled", "cancelled"],
+    ["revoked", "revoked"],
+  ])("rejects a %s recipient before AI context loading", async (_label, status) => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedEntry(ownerUid, unique("ai-denied"));
+    await seedPolicy(ownerUid);
+    await seedLegacyGrant(ownerUid, requesterUid, status);
+
+    const response = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "question" })
+      .expect(201);
+    expect(response.body.status).toBe("denied");
+    expect(response.body.error.code).toBe("NO_ACTIVE_LEGACY_GRANT");
+  });
+
+  it.each([
+    ["existence", "exists", "Private final text"],
+    ["summary", "summary", "Private final text"],
+    ["full", "content", undefined],
+  ])("uses the policy access level %s without overexposing content", async (accessLevel, responseField, forbiddenContent) => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    await seedPolicy(ownerUid, "active", `
+protocol recipient:
+  may read ${accessLevel} of entries tagged family
+`);
+    const entry = await seedEntry(ownerUid, unique("ai-access"));
+
+    const response = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "question" })
+      .expect(201);
+    expect(response.body.status).toBe("success");
+    expect(response.body.accessLevels[entry.entryId]).toBe(accessLevel);
+    expect(response.body.answer).toBeDefined();
+    expect(response.body).not.toHaveProperty(responseField);
+    if (forbiddenContent) expect(response.body.answer).not.toContain(forbiddenContent);
+  });
+
+  it("keeps hidden and future entries out of AI context and preserves the 50-entry source limit", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    await seedPolicy(ownerUid);
+    for (let index = 0; index < 51; index += 1) {
+      await seedEntry(ownerUid, `ai-${index}`, index === 0
+        ? { isHidden: true }
+        : index === 1
+          ? { releaseDate: "2999-01-01" }
+          : {});
+    }
+
+    const response = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "question" })
+      .expect(201);
+    expect(response.body.status).toBe("success");
+    expect(response.body.selectedEntryIds).toHaveLength(20);
+    expect(response.body.selectedEntryIds).not.toContain("ai-0");
+    expect(response.body.selectedEntryIds).not.toContain("ai-1");
   });
 });

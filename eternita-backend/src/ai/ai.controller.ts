@@ -1,4 +1,5 @@
-import { Body, Controller, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, NotFoundException, Post, Req, UseGuards } from "@nestjs/common";
+import { z } from "zod";
 import { AuthGuard } from "../auth/auth.guard";
 import { getDb } from "../config/firebase";
 import { ContextFilterService } from "./context-filter.service";
@@ -11,12 +12,15 @@ import { hashPrompt, normalizePromptCategory } from "./ai-log";
 import { GEMINI_MODEL_ID } from "./gemini.config";
 import { GeminiServiceError } from "./gemini-runtime";
 import { LegacyService } from "../legacy/legacy.service";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
 
-interface AiAskBody {
-  ownerUid: string;
-  question: string;
-  promptCategory?: string;
-}
+const aiAskSchema = z.object({
+  ownerUid: z.string().trim().min(1, "ownerUid is required"),
+  question: z.string().trim().min(1, "question is required").max(4_000, "question is too long"),
+  promptCategory: z.string().trim().max(100, "promptCategory is too long").optional(),
+}).strict();
+
+type AiAskBody = z.infer<typeof aiAskSchema>;
 
 @Controller("ai")
 @UseGuards(AuthGuard)
@@ -32,10 +36,14 @@ export class AiController {
   @Post("ask")
   async askQuestion(
     @Req() request: { uid: string },
-    @Body() body: AiAskBody,
+    @Body(new ZodValidationPipe(aiAskSchema)) body: AiAskBody,
   ) {
     const startedAt = Date.now();
     const requesterUid = getAuthenticatedViewerUid(request);
+    const ownerSnapshot = await getDb().collection("users").doc(body.ownerUid).get();
+    if (!ownerSnapshot.exists || ownerSnapshot.data()?.role !== "owner") {
+      throw new NotFoundException("Owner profile not found.");
+    }
     const modelName = GEMINI_MODEL_ID;
     let selectedEntries: Awaited<ReturnType<ContextFilterService["filterEntries"]>> = [];
     let legacyGrant = { active: true, released: false };
