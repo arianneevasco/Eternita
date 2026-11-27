@@ -328,8 +328,14 @@ export class DiaryService {
       return safeRefusal("Entry not available.");
     }
 
+    let legacyGrant = { active: true, released: false };
     if (requesterUid !== ownerUid) {
-      const legacyGrant = await this.legacyService.getActiveLegacyGrant(requesterUid, ownerUid);
+      const service = this.legacyService as LegacyService & {
+        getLegacyGrantState?: (requesterUid: string, ownerUid: string) => Promise<{ active: boolean; released?: boolean }>;
+      };
+      legacyGrant = service.getLegacyGrantState
+        ? await service.getLegacyGrantState(requesterUid, ownerUid) as { active: boolean; released: boolean }
+        : { active: (await this.legacyService.getActiveLegacyGrant(requesterUid, ownerUid)).active, released: false };
       if (!legacyGrant.active) {
         return safeRefusal("Entry not available.");
       }
@@ -352,6 +358,7 @@ export class DiaryService {
             people: entry.people,
             tags: entry.tags,
           },
+          allowFrozenPolicy: legacyGrant.released === true,
         });
 
     if (!decision.allowed) {

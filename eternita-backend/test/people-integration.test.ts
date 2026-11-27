@@ -1,8 +1,8 @@
-import { UnauthorizedException, ValidationPipe, Module } from "@nestjs/common";
+import { UnauthorizedException, ValidationPipe } from "@nestjs/common";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
-import { jest } from "@jest/globals";
+import { afterAll, beforeAll, describe, expect, it, jest } from "@jest/globals";
 
 const emulatorAvailable = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
 
@@ -11,7 +11,84 @@ jest.setTimeout(30_000);
 (emulatorAvailable ? describe : describe.skip)("people HTTP integration", () => {
   let app: INestApplication;
   let getDb: typeof import("../src/config/firebase").getDb;
-  let AuthGuard: new (...args: any[]) => any;
+
+  const unique = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  async function seedEntry(
+    ownerUid: string,
+    entryId: string,
+    overrides: Record<string, unknown> = {},
+  ) {
+    const entry = {
+      entryId,
+      ownerUid,
+      title: "Visible title",
+      summary: "Visible summary",
+      originalText: "Private original text",
+      finalText: "Private final text",
+      people: [],
+      tags: ["family"],
+      isHidden: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...overrides,
+    };
+    await getDb().collection("users").doc(ownerUid).collection("entries").doc(entryId).set(entry);
+    return entry;
+  }
+
+  async function seedLegacyGrant(ownerUid: string, requesterUid: string, status: string) {
+    const request = getDb().collection("users").doc(ownerUid).collection("legacyRequests").doc(unique("request"));
+    const now = new Date();
+    await request.set({
+      requestId: request.id,
+      ownerUid,
+      requesterUid,
+      status,
+      decision: status === "denied" ? "denied" : status === "approved" || status === "active" ? "approved" : null,
+      decisionByUid: status === "denied" || status === "approved" || status === "active" ? ownerUid : null,
+      decisionAt: status === "denied" || status === "approved" || status === "active" ? now : null,
+      activatedAt: status === "active" ? now : null,
+      revokedAt: status === "revoked" ? now : null,
+      createdAt: now,
+      updatedAt: now,
+      requestedAt: now,
+    });
+    return request.id;
+  }
+
+  async function seedPolicy(ownerUid: string, status = "active", policyText = `
+protocol recipient:
+  may read full of entries tagged family
+  may not read full of entries tagged private
+`) {
+    const policy = getDb().collection("users").doc(ownerUid).collection("policies").doc(unique("policy"));
+    const now = new Date();
+    await policy.set({
+      policyId: policy.id,
+      ownerUid,
+      policyText,
+      compiledFacts: [],
+      compiledPolicy: {},
+      version: 1,
+      status,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return policy.id;
+  }
+
+  async function readEntry(
+    requesterUid: string,
+    ownerUid: string,
+    entryId: string,
+    access = "full",
+  ) {
+    return request(app.getHttpServer())
+      .get(`/entries/${entryId}`)
+      .query({ ownerUid, access })
+      .set("x-test-uid", requesterUid);
+  }
 
   beforeAll(async () => {
     jest.unstable_mockModule("../src/auth/auth.guard", () => ({
@@ -25,20 +102,26 @@ jest.setTimeout(30_000);
         }
       },
     }));
+    jest.unstable_mockModule("../src/auth/firebase-auth.service", () => ({
+      FirebaseAuthService: class TestFirebaseAuthService {},
+    }));
 
-    const peopleModule = await import("../src/people/people.controller");
-    const authModule = await import("../src/auth/auth.guard");
+    const { AppModule } = await import("../src/app.module");
     const configModule = await import("../src/config/firebase");
+    const { LegacyService } = await import("../src/legacy/legacy.service");
     getDb = configModule.getDb;
-    AuthGuard = authModule.AuthGuard as new (...args: any[]) => any;
 
-    @Module({
-      controllers: [peopleModule.PeopleController],
-      providers: [AuthGuard],
-    })
-    class IntegrationModule {}
-
-    const moduleRef = await Test.createTestingModule({ imports: [IntegrationModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(LegacyService)
+      .useFactory({ factory: () => new LegacyService(getDb()) })
+      .overrideProvider((await import("../src/ai/gemini.service")).GeminiService)
+      .useValue({
+        answerQuestion: async () => ({
+          answer: "The permitted entry says so. [Visible title — visible]",
+          modelName: "test-model",
+          tokenUsage: undefined,
+        }),
+      })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -131,5 +214,151 @@ jest.setTimeout(30_000);
     ]);
 
     expect([first.body.error, second.body.error].filter(Boolean)).toHaveLength(1);
+  });
+
+  it.each([
+    ["denied", "denied"],
+    ["pending", "pending"],
+    ["cancelled", "cancelled"],
+    ["revoked", "revoked"],
+  ])("rejects a %s recipient before policy evaluation", async (_label, status) => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    const entryId = unique("entry");
+    await seedEntry(ownerUid, entryId);
+    await seedLegacyGrant(ownerUid, requesterUid, status);
+
+    const response = await readEntry(requesterUid, ownerUid, entryId);
+
+    expect(response.status).toBe(200);
+    expect(response.body.accessGranted).toBe(false);
+    expect(response.body).not.toHaveProperty("content");
+  });
+
+  it("rejects unauthenticated and cross-owner diary reads", async () => {
+    const ownerUid = unique("owner");
+    const otherOwnerUid = unique("other-owner");
+    const entryId = unique("entry");
+    await seedEntry(ownerUid, entryId);
+
+    await request(app.getHttpServer())
+      .get(`/entries/${entryId}`)
+      .query({ ownerUid })
+      .expect(401);
+
+    const response = await readEntry("recipient", ownerUid, entryId);
+    expect(response.body.accessGranted).toBe(false);
+
+    const otherEntry = await seedEntry(otherOwnerUid, unique("other-entry"));
+    const otherResponse = await readEntry("recipient", otherOwnerUid, otherEntry.entryId);
+    expect(otherResponse.body.accessGranted).toBe(false);
+  });
+
+  it("enforces hidden and release-date visibility", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    await seedPolicy(ownerUid);
+
+    const hidden = await seedEntry(ownerUid, unique("hidden"), { isHidden: true });
+    const future = await seedEntry(ownerUid, unique("future"), { releaseDate: "2999-01-01" });
+    const released = await seedEntry(ownerUid, unique("released"), { releaseDate: "2000-01-01" });
+
+    expect((await readEntry(requesterUid, ownerUid, hidden.entryId)).body.accessGranted).toBe(false);
+    expect((await readEntry(requesterUid, ownerUid, future.entryId)).body.accessGranted).toBe(false);
+    expect((await readEntry(requesterUid, ownerUid, released.entryId)).body.accessGranted).toBe(true);
+  });
+
+  it("returns only the requested existence, summary, or full access projection", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    await seedPolicy(ownerUid, "active", `
+protocol recipient:
+  may read full of entries tagged family
+`);
+    const entry = await seedEntry(ownerUid, unique("projection"));
+
+    const existence = await readEntry(requesterUid, ownerUid, entry.entryId, "existence");
+    expect(existence.body).toEqual({ accessGranted: true, exists: true });
+
+    const summary = await readEntry(requesterUid, ownerUid, entry.entryId, "summary");
+    expect(summary.body).toEqual({ accessGranted: true, summary: "Visible summary" });
+
+    const full = await readEntry(requesterUid, ownerUid, entry.entryId, "full");
+    expect(full.body).toMatchObject({
+      accessGranted: true,
+      title: "Visible title",
+      content: "Private final text",
+    });
+  });
+
+  it("enforces deny precedence over an allow policy", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    await seedPolicy(ownerUid);
+    const entry = await seedEntry(ownerUid, unique("private"), { tags: ["private"] });
+
+    const response = await readEntry(requesterUid, ownerUid, entry.entryId, "full");
+    expect(response.body.accessGranted).toBe(false);
+  });
+
+  it("denies access when the policy is frozen and restricts the freeze route to the owner", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    const policyId = await seedPolicy(ownerUid);
+    const entry = await seedEntry(ownerUid, unique("frozen"));
+
+    await request(app.getHttpServer())
+      .post(`/policies/${policyId}/freeze`)
+      .set("x-test-uid", requesterUid)
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .post(`/policies/${policyId}/freeze`)
+      .set("x-test-uid", ownerUid)
+      .expect(201);
+
+    const response = await readEntry(requesterUid, ownerUid, entry.entryId);
+    expect(response.body.accessGranted).toBe(false);
+  });
+
+  it("uses the same active-grant and policy gate for AI access", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    const entry = await seedEntry(ownerUid, unique("ai"));
+    await seedPolicy(ownerUid, "active", `
+protocol recipient:
+  may read full of entries tagged family
+`);
+
+    const withoutGrant = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "What is in the diary?" })
+      .expect(201);
+    expect(withoutGrant.body.status).toBe("denied");
+    expect(withoutGrant.body.error.code).toBe("NO_ACTIVE_LEGACY_GRANT");
+
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    const allowed = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "What is in the diary?" })
+      .expect(201);
+    expect(allowed.body.status).toBe("success");
+    expect(allowed.body.selectedEntryIds).toContain(entry.entryId);
+
+    const hidden = await seedEntry(ownerUid, unique("ai-hidden"), { isHidden: true });
+    const future = await seedEntry(ownerUid, unique("ai-future"), { releaseDate: "2999-01-01" });
+    const filtered = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "What is in the diary?" })
+      .expect(201);
+    expect(filtered.body.selectedEntryIds).not.toContain(hidden.entryId);
+    expect(filtered.body.selectedEntryIds).not.toContain(future.entryId);
   });
 });

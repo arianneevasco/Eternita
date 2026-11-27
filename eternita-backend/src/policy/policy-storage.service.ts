@@ -79,6 +79,24 @@ export class PolicyStorageService {
     };
   }
 
+  async getLatestFrozenPolicy(ownerUid: string) {
+    const snapshot = await getDb()
+      .collection("users")
+      .doc(ownerUid)
+      .collection("policies")
+      .where("status", "==", "frozen")
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return null;
+    }
+
+    const document = snapshot.docs[0];
+    return { policyId: document.id, ...document.data() };
+  }
+
   async freezePolicy(ownerUid: string, policyId: string) {
     const policyReference = getDb()
       .collection("users")

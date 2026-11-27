@@ -41,6 +41,7 @@ export async function selectPermittedEntries(
   candidates: CandidateEntry[],
   evaluateAccess: EvaluateAccess,
   formatCitation: (entry: CandidateEntry, accessLevel: AccessLevel) => string,
+  allowFrozenPolicy = false,
 ): Promise<PermittedEntry[]> {
   const permitted: PermittedEntry[] = [];
 
@@ -68,6 +69,7 @@ export async function selectPermittedEntries(
               people: entry.people,
               tags: entry.tags,
             },
+            allowFrozenPolicy,
           });
 
           if (decision.reason === "Access could not be evaluated.") {

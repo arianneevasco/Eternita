@@ -14,6 +14,7 @@ export class ContextFilterService {
     requesterUid: string,
     ownerUid: string,
     entries: CandidateEntry[],
+    allowFrozenPolicy = false,
   ): Promise<PermittedEntry[]> {
     return selectPermittedEntries(
       requesterUid,
@@ -21,6 +22,7 @@ export class ContextFilterService {
       entries,
       (request) => this.policyEvaluation.evaluateAccess(request),
       (entry, accessLevel) => this.citations.formatEntryCitation(entry, accessLevel),
+      allowFrozenPolicy,
     );
   }
 }

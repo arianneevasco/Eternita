@@ -17,6 +17,7 @@ export interface AccessRequest {
     people?: string[];
     tags?: string[];
   };
+  allowFrozenPolicy?: boolean;
 }
 
 export interface AccessDecision {
@@ -43,8 +44,11 @@ export class PolicyEvaluationService {
     const policy = await this.policyStorage.getActivePolicy(
       request.ownerUid,
     );
+    const effectivePolicy = policy ?? (request.allowFrozenPolicy
+      ? await this.policyStorage.getLatestFrozenPolicy(request.ownerUid)
+      : null);
 
-    if (!policy) {
+    if (!effectivePolicy) {
       return {
         allowed: false,
         reason: "No active policy is available for this owner.",
@@ -52,7 +56,7 @@ export class PolicyEvaluationService {
     }
 
     try {
-      const storedPolicy = policy as typeof policy & {
+      const storedPolicy = effectivePolicy as typeof effectivePolicy & {
         policyText?: string;
         compiledFacts?: string[];
       };

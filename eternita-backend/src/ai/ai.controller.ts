@@ -38,10 +38,11 @@ export class AiController {
     const requesterUid = getAuthenticatedViewerUid(request);
     const modelName = GEMINI_MODEL_ID;
     let selectedEntries: Awaited<ReturnType<ContextFilterService["filterEntries"]>> = [];
+    let legacyGrant = { active: true, released: false };
 
     try {
       if (requesterUid !== body.ownerUid) {
-        const legacyGrant = await this.legacyService.getActiveLegacyGrant(requesterUid, body.ownerUid);
+        legacyGrant = await this.legacyService.getLegacyGrantState(requesterUid, body.ownerUid);
         if (!legacyGrant.active) {
           const answer = "I cannot answer because no permitted records are available.";
           await this.writeLog(requesterUid, body, selectedEntries, modelName, "denied", startedAt);
@@ -62,6 +63,7 @@ export class AiController {
         requesterUid,
         body.ownerUid,
         entries,
+        legacyGrant.released === true,
       )).slice(0, 20);
 
       if (selectedEntries.length === 0) {

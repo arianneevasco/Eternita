@@ -13,7 +13,8 @@ export type LegacyRequestStatus =
   | "denied"
   | "active"
   | "revoked"
-  | "cancelled";
+  | "cancelled"
+  | "released";
 
 export type LegacyDecision = "approved" | "denied" | null;
 
@@ -27,6 +28,7 @@ export interface LegacyRequestDocument {
   decisionAt: Timestamp | null;
   activatedAt: Timestamp | null;
   revokedAt: Timestamp | null;
+  releasedAt?: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   requestedAt: Timestamp;
@@ -45,6 +47,10 @@ export interface LegacyRequestSafeResult {
 
 export interface LegacyGrantResult {
   active: boolean;
+}
+
+export interface LegacyGrantState extends LegacyGrantResult {
+  released: boolean;
 }
 
 const DUPLICATE_STATUSES: LegacyRequestStatus[] = ["pending", "approved", "active"];
@@ -120,8 +126,13 @@ export class LegacyService {
   }
 
   async getActiveLegacyGrant(requesterUid: string, ownerUid: string): Promise<LegacyGrantResult> {
+    const state = await this.getLegacyGrantState(requesterUid, ownerUid);
+    return { active: state.active };
+  }
+
+  async getLegacyGrantState(requesterUid: string, ownerUid: string): Promise<LegacyGrantState> {
     if (requesterUid === ownerUid) {
-      return { active: true };
+      return { active: true, released: false };
     }
 
     const snapshot = await this.db
@@ -129,11 +140,14 @@ export class LegacyService {
       .where("requesterUid", "==", requesterUid)
       .get();
 
-    return {
-      active: snapshot.docs.some((document) => {
+    const grant = snapshot.docs.find((document) => {
         const data = document.data() as LegacyRequestDocument;
-        return data.ownerUid === ownerUid && data.status === "active";
-      }),
+        return data.ownerUid === ownerUid && (data.status === "active" || data.status === "released");
+    });
+
+    return {
+      active: Boolean(grant),
+      released: grant?.data().status === "released",
     };
   }
 
@@ -160,7 +174,7 @@ export class LegacyService {
   }
 
   revokeLegacyRequest(requestId: string, authenticatedUid: string) {
-    return this.transitionRequest(requestId, authenticatedUid, "owner", ["approved", "active"], "revoked", (_data, now) => ({
+    return this.transitionRequest(requestId, authenticatedUid, "owner", ["approved", "active", "released"], "revoked", (_data, now) => ({
       revokedAt: now,
     }));
   }

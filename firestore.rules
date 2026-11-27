@@ -47,7 +47,8 @@ service cloud.firestore {
       }
 
       match /deathReports/{reportId} {
-        // Death reports and verification metadata are backend-only.
+        // Death reports, confirmation state, and backend-controlled release
+        // metadata are backend-only.
         allow read, write: if false;
       }
 
