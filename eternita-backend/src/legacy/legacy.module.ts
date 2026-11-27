@@ -10,7 +10,7 @@ import { getDb } from "../config/firebase";
   imports: [AuthModule],
   controllers: [LegacyController, DeathReportController],
   providers: [
-    LegacyService,
+    { provide: LegacyService, useFactory: () => new LegacyService(getDb()) },
     { provide: DeathVerificationService, useFactory: () => new DeathVerificationService(getDb()) },
   ],
   exports: [LegacyService],
