@@ -41,3 +41,15 @@ test("compiles permissions and preserves deny rules", () => {
     { to: "juan" },
   ]);
 });
+
+test("maps symbolic protocol identities to real Firebase UIDs safely", () => {
+  const result = compilePolicy(
+    `protocol beneficiary:\n  may read full of entries tagged family`,
+    [{ entryId: "entry_family", tags: ["family"] }],
+    { beneficiary: "firebase-user-123_ABC" },
+  );
+
+  expect(result.facts).toContain(
+    "grant('firebase-user-123_ABC',entry_family,full).",
+  );
+});

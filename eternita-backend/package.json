@@ -8,7 +8,7 @@
     "build": "tsc",
     "test": "jest",
     "test:firestore": "firebase emulators:exec --only firestore \"jest --runInBand test/firestore-rules.emulator.test.ts\"",
-    "test:integration": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.integration.config.cjs --runInBand --verbose test/people-integration.test.ts test/death-report.integration.test.ts",
+    "test:integration": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.integration.config.cjs --runInBand --verbose test/people-integration.test.ts test/legacy-integration.test.ts test/death-report.integration.test.ts test/hash-chain.integration.test.ts",
     "test:integration:emulator": "firebase emulators:exec --only firestore \"npm run test:integration\"",
     "verify:gemini": "ts-node scripts/verify-gemini.ts",
     "prolog-smoke": "ts-node scripts/prolog-smoke.ts"

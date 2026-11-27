@@ -67,6 +67,7 @@ function prologAtom(value: string): string {
 export function compilePolicy(
   source: string,
   entries: PolicyEntry[] = [],
+  identityMap: Record<string, string> = {},
 ): CompiledPolicy {
   const program: PolicyProgram =
     parsePolicy(source);
@@ -100,7 +101,7 @@ export function compilePolicy(
           }
 
           const predicate = statement.allow ? "grant" : "deny";
-          const fact = `${predicate}(${prologAtom(viewer)},${prologAtom(entry.entryId)},${action}).`;
+          const fact = `${predicate}(${prologAtom(identityMap[viewer] ?? viewer)},${prologAtom(entry.entryId)},${action}).`;
 
           if (!facts.includes(fact)) {
             facts.push(fact);

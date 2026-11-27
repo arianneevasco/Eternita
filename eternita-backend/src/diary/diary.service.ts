@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { getDb } from "../config/firebase";
 import { PolicyEvaluationService } from "../policy/policy-evaluation.service";
 import { CreateEntryDto, EditEntryDto } from "./dto";
@@ -23,27 +23,66 @@ export class DiaryService {
       .doc(ownerUid)
       .collection("entries")
       .doc();
-    const now = new Date();
-    const entryData = {
-      entryId: entryReference.id,
-      ownerUid,
-      ...dto,
-      isFavorite: false,
-      people: dto.people ?? [],
-      tags: dto.tags ?? [],
-      isDraft: dto.isDraft ?? true,
-      finalText: dto.originalText,
-      isHidden: false,
-      currentVersion: 1,
-      previousHash: "GENESIS",
-      entryHash: "GENESIS",
-      createdAt: now,
-      updatedAt: now,
-    };
+    const ownerReference = this.db.collection("users").doc(ownerUid);
+    const isDraft = dto.isDraft ?? true;
+    const publishedEntries = this.db
+      .collection("users")
+      .doc(ownerUid)
+      .collection("entries")
+      .where("isDraft", "==", false)
+      .orderBy("publishedAt", "desc")
+      .limit(1);
 
-    await entryReference.set(entryData);
+    return this.db.runTransaction(async (transaction) => {
+      const now = new Date();
+      let previousHash = "GENESIS";
+      let sequence: number | undefined;
+      let publishedAt: Date | undefined;
+      let entryHash = "GENESIS";
 
-    return entryData;
+      if (!isDraft) {
+        const ownerSnapshot = await transaction.get(ownerReference);
+        const lastEntriesSnapshot = await transaction.get(publishedEntries);
+        const lastEntry = lastEntriesSnapshot.empty
+          ? undefined
+          : lastEntriesSnapshot.docs[0].data() as Record<string, any>;
+        previousHash = lastEntry?.entryHash ?? "GENESIS";
+        sequence = (lastEntry?.sequence ?? ownerSnapshot.data()?.lastSeq ?? 0) + 1;
+        publishedAt = now;
+        entryHash = calculateEntryHash({
+          previousHash,
+          ownerUid,
+          entryId: entryReference.id,
+          title: dto.title,
+          content: dto.originalText,
+          publishedAt,
+        });
+      }
+
+      const entryData = {
+        entryId: entryReference.id,
+        ownerUid,
+        ...dto,
+        isFavorite: false,
+        people: dto.people ?? [],
+        tags: dto.tags ?? [],
+        isDraft,
+        finalText: dto.originalText,
+        isHidden: false,
+        currentVersion: 1,
+        previousHash,
+        entryHash,
+        createdAt: now,
+        updatedAt: now,
+        ...(publishedAt ? { publishedAt, sequence } : {}),
+      };
+
+      transaction.create(entryReference, entryData);
+      if (!isDraft && sequence !== undefined) {
+        transaction.set(ownerReference, { lastSeq: sequence, lastHash: entryHash }, { merge: true });
+      }
+      return entryData;
+    });
   }
 
   async listEntries(ownerUid: string) {
@@ -86,15 +125,6 @@ export class DiaryService {
       .doc(ownerUid)
       .collection("entries")
       .doc(entryId);
-    const entrySnapshot = await entryReference.get();
-
-    if (!entrySnapshot.exists) {
-      throw new NotFoundException("Entry not found.");
-    }
-
-    const currentEntry = entrySnapshot.data() as Record<string, any>;
-    const nextVersion = (currentEntry.currentVersion ?? 1) + 1;
-    const now = new Date();
     const versionReference = this.db
       .collection("users")
       .doc(ownerUid)
@@ -103,23 +133,36 @@ export class DiaryService {
       .collection("versions")
       .doc();
 
-    await versionReference.set({
-      entryId,
-      version: currentEntry.currentVersion ?? 1,
-      content: currentEntry.finalText ?? currentEntry.originalText,
-      previousHash: currentEntry.previousHash,
-      entryHash: currentEntry.entryHash,
-      createdAt: now,
-    });
+    return this.db.runTransaction(async (transaction) => {
+      const entrySnapshot = await transaction.get(entryReference);
+      if (!entrySnapshot.exists) {
+        throw new NotFoundException("Entry not found.");
+      }
 
-    await entryReference.update({
-      ...dto,
-      finalText: dto.originalText ?? currentEntry.finalText ?? currentEntry.originalText,
-      currentVersion: nextVersion,
-      updatedAt: now,
-    });
+      const currentEntry = entrySnapshot.data() as Record<string, any>;
+      if (currentEntry.isDraft !== true) {
+        throw new ConflictException("Published entries cannot be edited because that would invalidate the hash chain.");
+      }
 
-    return { entryId, currentVersion: nextVersion, updatedAt: now };
+      const nextVersion = (currentEntry.currentVersion ?? 1) + 1;
+      const now = new Date();
+      transaction.create(versionReference, {
+        entryId,
+        version: currentEntry.currentVersion ?? 1,
+        content: currentEntry.finalText ?? currentEntry.originalText,
+        previousHash: currentEntry.previousHash,
+        entryHash: currentEntry.entryHash,
+        createdAt: now,
+      });
+      transaction.update(entryReference, {
+        ...dto,
+        finalText: dto.originalText ?? currentEntry.finalText ?? currentEntry.originalText,
+        currentVersion: nextVersion,
+        updatedAt: now,
+      });
+
+      return { entryId, currentVersion: nextVersion, updatedAt: now };
+    });
   }
 
   async setFavorite(requesterUid: string, ownerUid: string, entryId: string, isFavorite: boolean) {

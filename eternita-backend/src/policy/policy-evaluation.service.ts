@@ -60,8 +60,11 @@ export class PolicyEvaluationService {
         policyText?: string;
         compiledFacts?: string[];
       };
+      const identityMap = typeof storedPolicy.policyText === "string"
+        ? await this.getIdentityMap(request.ownerUid, storedPolicy.policyText)
+        : {};
       const facts = request.entry && typeof storedPolicy.policyText === "string"
-        ? compilePolicy(storedPolicy.policyText, [request.entry]).facts.join("\n")
+        ? compilePolicy(storedPolicy.policyText, [request.entry], identityMap).facts.join("\n")
         : (storedPolicy.compiledFacts ?? []).join("\n");
 
       const atom = (value: string) =>
@@ -93,5 +96,14 @@ export class PolicyEvaluationService {
         reason: "Access could not be evaluated.",
       };
     }
+  }
+
+  private async getIdentityMap(ownerUid: string, policyText: string): Promise<Record<string, string>> {
+    const storage = this.policyStorage as PolicyStorageService & {
+      getPolicyIdentityMap?: (ownerUid: string, policyText: string) => Promise<Record<string, string>>;
+    };
+    return storage.getPolicyIdentityMap
+      ? storage.getPolicyIdentityMap(ownerUid, policyText)
+      : {};
   }
 }

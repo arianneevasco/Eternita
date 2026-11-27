@@ -11,7 +11,7 @@ export const entryContentSchema = z.object({
   people: z.array(z.string().regex(/^[a-z][a-z0-9_]{0,30}$/)).default([]),
   tags: z.array(z.string().regex(/^[a-z][a-z0-9_]{0,30}$/)).default([]),
   isFavorite: z.boolean().default(false),
-  isDraft: z.boolean().default(false),
+  isDraft: z.boolean().default(true),
   writingMode: z.enum(["verbatim", "lightfix", "review"]).default("verbatim"),
 });
 

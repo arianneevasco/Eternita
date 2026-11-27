@@ -1,17 +1,15 @@
 import { Module } from "@nestjs/common";
-import { AuthGuard } from "../auth/auth.guard";
-import { FirebaseAuthService } from "../auth/firebase-auth.service";
+import { AuthModule } from "../auth/auth.module";
 import { PolicyController } from "./policy.controller";
 import { PolicyStorageService } from "./policy-storage.service";
 import { PolicyEvaluationService } from "./policy-evaluation.service";
 
 @Module({
+  imports: [AuthModule],
   controllers: [PolicyController],
   providers: [
     PolicyStorageService,
     PolicyEvaluationService,
-    AuthGuard,
-    FirebaseAuthService,
   ],
   exports: [PolicyStorageService, PolicyEvaluationService]
 })

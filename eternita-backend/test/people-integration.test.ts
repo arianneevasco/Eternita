@@ -330,6 +330,32 @@ protocol recipient:
     expect(response.body.accessGranted).toBe(false);
   });
 
+  it("denies AI access when the recipient policy is frozen", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    const policyId = await seedPolicy(ownerUid, "active", `
+protocol recipient:
+  may read full of entries tagged family
+`);
+    await seedEntry(ownerUid, unique("frozen-ai"));
+
+    await request(app.getHttpServer())
+      .post(`/policies/${policyId}/freeze`)
+      .set("x-test-uid", ownerUid)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "What is in the diary?" })
+      .expect(201);
+
+    expect(response.body.status).toBe("denied");
+    expect(response.body.error.code).toBe("NO_PERMITTED_ENTRIES");
+    expect(response.body.selectedEntryIds).toEqual([]);
+  });
+
   it("uses the same active-grant and policy gate for AI access", async () => {
     const ownerUid = unique("owner");
     const requesterUid = "recipient";
@@ -365,6 +391,35 @@ protocol recipient:
       .expect(201);
     expect(filtered.body.selectedEntryIds).not.toContain(hidden.entryId);
     expect(filtered.body.selectedEntryIds).not.toContain(future.entryId);
+  });
+
+  it("maps a symbolic policy protocol to a realistic hyphenated Firebase UID for diary and AI access", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "beneficiary-user-123_ABC";
+    await getDb().collection("users").doc(requesterUid).set({
+      uid: requesterUid,
+      role: "recipient",
+      ownerUid,
+      handle: "beneficiary",
+    });
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    const entry = await seedEntry(ownerUid, unique("mapped"));
+    await request(app.getHttpServer())
+      .post("/policies")
+      .set("x-test-uid", ownerUid)
+      .send({ policyText: "protocol beneficiary:\n  may read full of entries tagged family" })
+      .expect(201);
+
+    const diary = await readEntry(requesterUid, ownerUid, entry.entryId, "full");
+    expect(diary.body.accessGranted).toBe(true);
+
+    const ai = await request(app.getHttpServer())
+      .post("/ai/ask")
+      .set("x-test-uid", requesterUid)
+      .send({ ownerUid, question: "What is in the family entry?" })
+      .expect(201);
+    expect(ai.body.status).toBe("success");
+    expect(ai.body.selectedEntryIds).toContain(entry.entryId);
   });
 
   it.each([
@@ -467,5 +522,23 @@ protocol recipient:
     expect(response.body.selectedEntryIds).toHaveLength(20);
     expect(response.body.selectedEntryIds).not.toContain("ai-0");
     expect(response.body.selectedEntryIds).not.toContain("ai-1");
+  });
+
+  it("loads no more than 50 raw entries from Firestore for an AI request", async () => {
+    const ownerUid = unique("owner");
+    const requesterUid = "recipient";
+    await seedLegacyGrant(ownerUid, requesterUid, "active");
+    await seedPolicy(ownerUid);
+    for (let index = 0; index < 75; index += 1) {
+      await seedEntry(ownerUid, `raw-limit-${index}`);
+    }
+
+    const { AiController } = await import("../src/ai/ai.controller");
+    const controller = app.get(AiController) as AiController & {
+      getEntries(ownerUid: string): Promise<unknown[]>;
+    };
+    const rawEntries = await controller.getEntries(ownerUid);
+
+    expect(rawEntries).toHaveLength(50);
   });
 });
