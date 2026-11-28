@@ -1,315 +1,154 @@
-# Eternita Backend Integration Guide
+# Frontend Integration Guide
 
-This guide reflects the backend code currently in this repository. Values that
-are project-specific, secret, or not configured here remain explicit
-placeholders; do not guess them.
+This contract is derived from current source. Placeholders below must be replaced with project/deployment values; this repository has no production API URL or Firebase Web app configuration.
 
-## 1. Backend base URLs
+## URLs
 
-The local NestJS backend listens on port `3000` by default (`PORT` can override
-it).
-
-| Frontend environment | Base URL |
-| --- | --- |
-| Expo web on the backend computer | `http://localhost:3000` |
+| Client | Backend base URL |
+|---|---|
+| Local backend on same computer | `http://localhost:3000` (or configured `PORT`) |
 | Android emulator | `http://10.0.2.2:3000` |
-| Physical Android/iOS device on the same Wi-Fi | `http://<BACKEND_COMPUTER_LAN_IPV4>:3000` |
-| Production | `<PRODUCTION_BACKEND_HTTPS_URL — not configured in this repository>` |
+| Physical phone/tablet on same LAN | `http://<BACKEND_COMPUTER_LAN_IPV4>:3000` |
+| Expo web in development | `http://localhost:3000`; actual browser origin is usually Expo port 8081 or 19006, but CORS is currently not enabled |
+| Production | `<PRODUCTION_BACKEND_HTTPS_URL>` (not configured) |
 
-For a physical device, use the backend computer's IPv4 address from `ipconfig`
-(for example `http://192.168.1.10:3000`); both devices must be on the same
-network and the computer firewall must permit the port.
+Physical devices and backend computer must be on the same reachable network. Production must use HTTPS.
 
-Example frontend setting for a physical-device test:
+## Firebase client configuration and sign-in
 
-```dotenv
-EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:3000
-```
-
-Replace the example IP with the actual backend computer address. Use the
-appropriate base URL per environment; do not ship a local URL in production.
-
-## 2. Firebase client configuration
-
-Use the same Firebase project configured for the backend. The backend
-repository does not contain the Firebase Web app configuration, so obtain
-these values from Firebase Console → Project settings → Your apps → Web app.
-Keep project-specific values as placeholders until the project owner supplies
-them:
+Obtain these from Firebase Console → Project settings → Your apps → Web app:
 
 ```dotenv
 EXPO_PUBLIC_FIREBASE_API_KEY=<FIREBASE_WEB_API_KEY>
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=<FIREBASE_AUTH_DOMAIN_FROM_FIREBASE_CONSOLE>
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=<FIREBASE_AUTH_DOMAIN>
 EXPO_PUBLIC_FIREBASE_PROJECT_ID=<FIREBASE_PROJECT_ID>
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=<FIREBASE_STORAGE_BUCKET_FROM_CONSOLE>
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=<FIREBASE_STORAGE_BUCKET>
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=<FIREBASE_PROJECT_NUMBER>
 EXPO_PUBLIC_FIREBASE_APP_ID=<FIREBASE_WEB_APP_ID>
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
 ```
 
-Firebase Web config is client configuration. `apiKey` is not the Firebase
-Admin service-account private key. Never put Admin credentials, service
-account JSON, database credentials, or the Gemini API key in the frontend.
-Enable the desired sign-in provider in Firebase Authentication.
-
-## 3. Firebase sign-in flow
-
-1. Initialize the Firebase client SDK with the Web app configuration above.
-2. Register/sign in the user through Firebase Authentication.
-3. After sign-in, get a fresh token from the current user:
+Enable the selected Firebase Authentication provider in the Firebase project. Register/sign in through Firebase client Auth, then obtain a fresh token:
 
 ```ts
 const idToken = await auth.currentUser?.getIdToken(true);
 if (!idToken) throw new Error("No signed-in Firebase user");
 ```
 
-4. Attach the token to every protected backend request. Refresh/get a new token
-   when needed; do not hardcode, log, or share tokens.
-
-## 4. Backend authentication
-
-Protected routes require:
+Send on every protected request:
 
 ```http
 Authorization: Bearer <Firebase ID token>
 Content-Type: application/json
 ```
 
-Example header (placeholder only; do not copy as a real token):
+The backend verifies the ID token in `AuthGuard` and uses verified UID. Do not send a UID as authentication. Do not fetch protected data directly from Firestore.
 
-```http
-Authorization: Bearer <FIREBASE_ID_TOKEN>
-```
+## Routes and schemas
 
-The backend verifies the token and uses the verified UID as the authenticated
-identity. Do not send a Firebase UID as a substitute for the token, and do not
-read/write protected Firestore collections directly from the frontend.
+All routes except owner registration and health require the bearer token. Nest defaults are generally 201 for POST and 200 for GET/PATCH/DELETE. See each contract below for route-specific response shapes; some business errors are returned as HTTP-success bodies.
 
-## 5. Owner registration
+### Accounts and people
 
-`POST /auth/register-owner` is public because a new user cannot have an ID
-token before registration. It creates a Firebase Authentication user and an
-owner profile. Request validation comes from `RegisterOwnerDto`:
-
-- `email`: required valid email string, maximum 254 characters.
-- `password`: required string, 6–128 characters.
-- `displayName`: required string, trimmed, non-empty, maximum 100 characters.
-
-Request:
+**`POST /auth/register-owner`** is public. Request:
 
 ```json
-{
-  "email": "owner@example.com",
-  "password": "<USER-CHOSEN-PASSWORD>",
-  "displayName": "Owner Name"
-}
+{"email":"owner@example.com","password":"<USER-CHOSEN-PASSWORD>","displayName":"Owner Name"}
 ```
 
-Success status: `201 Created`.
+Validation: valid email max 254; password string 6–128; trimmed non-empty displayName max 100. HTTP 201 response:
 
 ```json
-{
-  "uid": "<FIREBASE_UID>",
-  "role": "owner",
-  "name": "Owner Name",
-  "handle": "owner"
-}
+{"uid":"<FIREBASE_UID>","role":"owner","name":"Owner Name","handle":"owner"}
 ```
 
-The returned handle is generated from the email's local part (lowercase and
-sanitized); the example above is for `owner@example.com`.
+Handle is sanitized email local part (lowercase; non `[a-z0-9_]` replaced with `_`; falls back to UID if empty).
 
-Known errors:
+**`GET /auth/me`** returns `{uid,role,name,handle,settings}`. If the profile does not exist, current behavior is successful-status `{ "error": "Register an Alaala profile first" }`.
 
-- `400 Bad Request`, Firebase rejects email/password:
-  `{ "message": "The email or password is invalid.", "error": "Bad Request", "statusCode": 400 }`
-- `400 Bad Request`, DTO validation fails:
-  `{ "message": ["<class-validator messages>"], "error": "Bad Request", "statusCode": 400 }`
-- `409 Conflict`, email already exists:
-  `{ "message": "An account with this email already exists.", "error": "Conflict", "statusCode": 409 }`
+**`POST /invites`** accepts inline `{handle,name}` (no runtime field validation). Returns `{inviteId,code,handle,name,expiresAt}`; invitation lasts seven days.
 
-After registration, sign in using Firebase client Authentication and use that
-user's ID token for protected routes. Beneficiaries are not created through
-this owner-only registration route: they sign up/sign in with Firebase, then
-join an invitation through `POST /auth/join`.
+**`POST /auth/join`** accepts `{code,name}`. Success returns `{uid,role:"recipient",ownerUid,name,handle}`. Invalid/expired/used code or existing profile returns inline `{error:"..."}`; check body as HTTP status may still indicate success.
 
-## 6. Create diary entry
+**`GET /people`** returns `{people:[{uid,role,ownerUid,name,handle}]}` for profiles whose ownerUid is authenticated caller.
 
-`POST /entries` requires a bearer token. The verified token UID determines the
-owner; do not send `ownerUid` in the body.
+### Diary
 
-Required fields from `CreateEntryDto`:
+**`POST /entries`** request:
 
-| Field | Type and validation |
-| --- | --- |
-| `title` | string, 1–200 characters |
-| `originalText` | string, 1–20,000 characters |
-| `journal` | string, 1–100 characters |
-| `entryDate` | string matching `YYYY-MM-DD` |
-| `entryTime` | string matching `HH:mm` |
-| `mood` | integer from 1 through 5 |
-
-Optional fields and defaults:
-
-| Field | Type and default |
-| --- | --- |
-| `releaseDate` | optional string matching `YYYY-MM-DD` |
-| `people` | array of strings matching `^[a-z][a-z0-9_]{0,30}$`; default `[]` |
-| `tags` | array of strings matching `^[a-z][a-z0-9_]{0,30}$`; default `[]` |
-| `isFavorite` | boolean; schema default `false` (service also stores `false` on create) |
-| `isDraft` | boolean; default `true` |
-| `writingMode` | `verbatim`, `lightfix`, or `review`; default `verbatim` |
+| Field | Required | Validation/default |
+|---|---:|---|
+| `title` | yes | string, 1–200 |
+| `originalText` | yes | string, 1–20,000 |
+| `journal` | yes | string, 1–100 |
+| `entryDate` | yes | `YYYY-MM-DD` regex |
+| `entryTime` | yes | `HH:mm` regex |
+| `mood` | yes | integer 1–5 |
+| `releaseDate` | no | `YYYY-MM-DD` regex |
+| `people`, `tags` | no | arrays of `^[a-z][a-z0-9_]{0,30}$`; default `[]` |
+| `isFavorite` | no | boolean; create service stores false |
+| `isDraft` | no | boolean, default true |
+| `writingMode` | no | `verbatim`, `lightfix`, or `review`, default `verbatim` |
 
 Example:
 
 ```json
-{
-  "title": "A memory",
-  "originalText": "The original diary entry.",
-  "journal": "Personal",
-  "entryDate": "2026-11-28",
-  "entryTime": "14:30",
-  "mood": 4,
-  "people": [],
-  "tags": [],
-  "isFavorite": false,
-  "isDraft": true,
-  "writingMode": "verbatim"
-}
+{"title":"A memory","originalText":"The original diary entry.","journal":"Personal","entryDate":"2026-11-28","entryTime":"14:30","mood":4,"people":[],"tags":[],"isFavorite":false,"isDraft":true,"writingMode":"verbatim"}
 ```
 
-Success status: `201 Created`. The response is the created document, with
-server-generated fields. Example for a draft:
+HTTP 201 response contains `{entryId,ownerUid,title,originalText,journal,entryDate,entryTime,mood,people,tags,isFavorite,isDraft,writingMode,finalText,isHidden,currentVersion,previousHash,entryHash,createdAt,updatedAt}`; optional releaseDate if supplied. Published entries also include `publishedAt` and `sequence`. Dates serialize as JSON date values.
+
+**`GET /entries`** has no body/query; returns HTTP 200 array of `{entryId,...storedEntryFields}` for owner-visible entries, newest `createdAt` first.
+
+| Route | Request | Success shape |
+|---|---|---|
+| `GET /entries/:entryId?ownerUid=<uid>&access=existence\|summary\|full` | Query ownerUid optional; access defaults full; enum is not runtime validated. | Owner gets entry document. Cross-user existence: `{accessGranted:true,exists:true}`; summary: `{accessGranted:true,summary}`; full: `{accessGranted:true,title,content,createdAt}`. Denial is `{accessGranted:false,message}`. |
+| `PATCH /entries/:entryId` | Partial create schema fields; Zod validates. | `{entryId,currentVersion,updatedAt}`. Only drafts can be edited. |
+| `POST /entries/:entryId/publish` | No body. | `{entryId,previousHash,entryHash,sequence,publishedAt}`. |
+| `PATCH /entries/:entryId/favorite` | `{isFavorite:boolean}` in TypeScript only; no runtime validator. | `{entryId,isFavorite}`. |
+| `DELETE /entries/:entryId` | No body; soft hide. | `{entryId,isHidden:true}`. |
+| `GET /entries/:entryId/versions` | No body. | Array `{versionId,entryId,version,content,previousHash,entryHash,createdAt}`. |
+
+### Policies and legacy routes
+
+`POST /policies` accepts `{policyText}` trimmed 1–100000 chars; returns `{policyId,ownerUid,policyText,compiledFacts,version,status}`. `GET /policies/active` returns policy or null. `POST /policies/:policyId/freeze` returns `{policyId,status:"frozen"}`.
+
+`POST /legacy/request` accepts `{ownerUid}` and returns safe request data: `{requestId,status,decision,decisionAt,activatedAt,revokedAt,createdAt,updatedAt}`. `GET /legacy/status/:ownerUid` returns the same or `{status:"not_requested"}`. Action routes are `POST /legacy/requests/:requestId/approve`, `/deny`, `/activate`, `/revoke`, `/cancel`, each no body and returning the safe request shape. Request body has no DTO validation. Service enforces actor and transition rules.
+
+`POST /legacy/death-reports` accepts `{ownerUid}` and returns `{reportId,status,confirmAfter}` on accepted report. Confirmation delay defaults to 2 minutes; background poll runs every second. Eligibility and status failures use Nest error shape. Do not add client assumptions that bypass this lifecycle.
+
+### AI and health
+
+`POST /ai/ask` strict body `{ownerUid,question,promptCategory?}`. Required nonempty trimmed ownerUid/question; question max 4000; optional promptCategory max 100. Response shape:
 
 ```json
-{
-  "entryId": "<ENTRY_ID>",
-  "ownerUid": "<AUTHENTICATED_UID>",
-  "title": "A memory",
-  "originalText": "The original diary entry.",
-  "journal": "Personal",
-  "entryDate": "2026-11-28",
-  "entryTime": "14:30",
-  "mood": 4,
-  "people": [],
-  "tags": [],
-  "isFavorite": false,
-  "isDraft": true,
-  "writingMode": "verbatim",
-  "finalText": "The original diary entry.",
-  "isHidden": false,
-  "currentVersion": 1,
-  "previousHash": "GENESIS",
-  "entryHash": "GENESIS",
-  "createdAt": "<ISO-8601 DATE>",
-  "updatedAt": "<ISO-8601 DATE>"
-}
+{"answer":"...","status":"success","error":null,"citations":["..."],"selectedEntryIds":["..."],"accessLevels":{"<entryId>":"full"}}
 ```
 
-If `isDraft` is `false`, the response also includes `publishedAt` and
-`sequence`; hash-chain values are computed for publication. Dates are
-serialized to JSON by the server.
+Denials use `status:"denied"`, `error.code` `NO_ACTIVE_LEGACY_GRANT` or `NO_PERMITTED_ENTRIES`, and empty citation/selection/access structures. AI failure uses `status:"error"`, generic answer, `error.code` such as `GEMINI_CONFIGURATION_MISSING`, `GEMINI_TIMEOUT`, `GEMINI_RATE_LIMITED`, `GEMINI_INVALID_RESPONSE`, `GEMINI_PROVIDER_ERROR`, or `AI_BACKEND_ERROR`; public message is `The AI service could not complete the request.` Citations returned by backend should be rendered as-is.
 
-Known errors: `400 Bad Request` for Zod body validation, shaped as
-`{ "message": "Invalid request data", "errors": { "<field>": ["<validation message>"] } }`;
-`401 Unauthorized` for a missing/invalid token. Other persistence failures
-are not mapped to a route-specific response.
+`GET /health/database` is unauthenticated health probe; response reflects database connectivity, not user data.
 
-## 7. List diary entries
+## Errors and approved messages
 
-`GET /entries` requires a bearer token.
+Known Nest response formats:
 
-- Request body: none.
-- Query parameters: none.
-- Success status: `200 OK`.
-- Success response: array of entry documents, each shaped as
-  `{ "entryId": "<ENTRY_ID>", ...storedEntryFields }`. The list contains
-  non-hidden entries belonging to the authenticated UID, newest `createdAt`
-  first. It includes the stored entry content and other document fields.
-- Error: `401 Unauthorized` for a missing/invalid token:
-  `{ "message": "Unauthorized", "statusCode": 401 }`.
+- 400: `{message:[validation strings],error:"Bad Request",statusCode:400}` for class-validator; custom Zod response `{message:"Invalid request data",errors:{field:[messages]}}`.
+- 401: `{message:"Unauthorized",statusCode:401}` for missing/invalid/expired token.
+- 403/404/409: `{message:"<specific reason>",error:"Forbidden"|"Not Found"|"Conflict",statusCode:n}`.
+- 500: `{statusCode:500,message:"Internal server error"}` generally.
+- Business failures may instead be HTTP 200/201 result bodies such as `{error:"Invitation expired"}` or `{accessGranted:false,message:"..."}`. Handle both status and JSON fields.
 
-## 8. Common error responses
+Stable common messages include `An account with this email already exists.`, `The email or password is invalid.`, `Entry not found.`, `Published entries cannot be edited because that would invalidate the hash chain.`, `An active or pending legacy request already exists.`, and `The AI service could not complete the request.` Not all messages are normalized into a stable frontend error-code catalog.
 
-Known and common responses from the current backend:
+## CORS, environment and secrets
 
-| Status | Typical shape/message |
-| --- | --- |
-| 400 | Standard validation: `{ "message": ["<validation messages>"], "error": "Bad Request", "statusCode": 400 }`; custom Zod validation: `{ "message": "Invalid request data", "errors": { ... } }`. |
-| 401 | `{ "message": "Unauthorized", "statusCode": 401 }` for missing, invalid, or expired bearer token. |
-| 403 | `{ "message": "<route-specific reason>", "error": "Forbidden", "statusCode": 403 }` for explicit permission failures. |
-| 404 | `{ "message": "<route-specific reason>", "error": "Not Found", "statusCode": 404 }`. |
-| 409 | `{ "message": "<route-specific conflict>", "error": "Conflict", "statusCode": 409 }`. |
-| 500 | Unexpected errors generally use Nest's default `{ "statusCode": 500, "message": "Internal server error" }`; some routes normalize AI errors into a JSON result instead. |
+CORS is currently **not configured** (`src/main.ts` does not call `enableCors()`). Thus no allowed-origin list is active and browser Expo web calls from a different origin will be blocked. Configure exact Expo web development origin (commonly `http://localhost:8081` or `http://localhost:19006`, verify the actual URL) and production web origin before web integration. Do not use wildcard origins in production. Native app API requests are not browser CORS requests.
 
-Important: the current API is not fully consistent. Some business failures are
-returned as HTTP 200/201 JSON objects such as `{ "error": "Invitation
-expired" }` or `{ "accessGranted": false, "message": "..." }`. Check both
-HTTP status and response fields. Do not assume every denial is HTTP 403.
+Backend environment values are in [`.env.example`](../.env.example): `PORT`, `FIREBASE_PROJECT_ID`, optional `FIREBASE_KEY_PATH` or `GOOGLE_APPLICATION_CREDENTIALS`, `FIRESTORE_EMULATOR_HOST`, server-only `GEMINI_API_KEY`, and `DEATH_REPORT_CONFIRMATION_DELAY_MINUTES`. Frontend values are `EXPO_PUBLIC_API_BASE_URL` and Firebase Web configuration above. Firebase Web config is client app configuration; it is distinct from Admin credentials.
 
-## 9. CORS
+Never expose in frontend bundles, logs, or source control: Firebase Admin service-account key/private key, service-account JSON, ADC credential file, Gemini API key, database credentials, `.env` secrets, Firebase ID tokens, or user passwords. Root `.gitignore` already ignores `.env`, nested `.env.*` except `.env.example`, and service-account JSON filename patterns.
 
-CORS is **not currently configured**: `src/main.ts` does not call
-`enableCors()`. Consequently no cross-origin Expo web origin is explicitly
-allowed by the backend at present.
+## OpenAPI / Swagger
 
-Configure the backend to allow the exact Expo web origin shown in the browser
-address bar (common development origins are `http://localhost:8081` or
-`http://localhost:19006`; verify the actual port) and the exact production web
-origin. The repository does not currently contain an allowed-origin list.
-Use explicit origins rather than wildcard `*` in production. Native Android
-and iOS API calls are not governed by browser CORS.
-
-## 10. Environment variables
-
-### Frontend
-
-Use public, framework-prefixed values only:
-
-- `EXPO_PUBLIC_API_BASE_URL`: environment-specific API base URL.
-- `EXPO_PUBLIC_FIREBASE_API_KEY`
-- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
-- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` (if configured for the Firebase app)
-- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` (if supplied)
-- `EXPO_PUBLIC_FIREBASE_APP_ID`
-
-The backend repository does not include Firebase Web config or a frontend env
-file. The placeholders in this guide must be filled from the Firebase project
-and deployment configuration.
-
-### Backend
-
-See [`.env.example`](../.env.example). Backend variables read by this code:
-
-| Variable | Purpose |
-| --- | --- |
-| `PORT` | Server port; defaults to `3000`. |
-| `FIREBASE_PROJECT_ID` | Optional explicit Firebase project ID. |
-| `FIREBASE_KEY_PATH` | Optional server-side service-account JSON path; if absent, Admin uses Application Default Credentials. |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Standard ADC credential-file path when ADC is used. Keep the file server-side. |
-| `FIRESTORE_EMULATOR_HOST` | Firestore emulator endpoint, normally supplied by Firebase Emulator tooling. |
-| `GEMINI_API_KEY` | Server-only Gemini API key. |
-| `DEATH_REPORT_CONFIRMATION_DELAY_MINUTES` | Death-report delay in minutes; defaults to `2`. |
-
-## 11. Values that must never be exposed to the frontend
-
-Never put Firebase Admin SDK credentials, service-account JSON/private keys,
-ADC credential files, Firestore/database credentials, `GEMINI_API_KEY`, or
-other backend secrets into frontend environment variables or bundles. Never
-commit real `.env` files. Firebase ID tokens and passwords are credentials too:
-do not hardcode, log, or share them. Firebase Web client config is not an
-Admin credential, but project-specific values are intentionally left as
-placeholders here until supplied by the project owner.
-
-## Contract gaps for the frontend team
-
-- There is no production backend URL or Firebase Web config in this repo.
-- CORS is not enabled and no origins are configured.
-- `POST /invites`, `POST /auth/join`, `PATCH /entries/:entryId/favorite`,
-  `POST /legacy/request`, and `POST /legacy/death-reports` use inline TypeScript
-  body types without runtime field validation. Their field requirements should
-  be treated as the current intended request format, not uniformly enforced
-  DTO validation.
-- The `access` query parameter on `GET /entries/:entryId` has no runtime enum
-  validation.
-- Some domain failures are returned in successful-status JSON bodies.
+Swagger UI is served at `/api`; OpenAPI JSON is served at `/api-json`. The OpenAPI document advertises bearer authentication. Controllers include tags/operation summaries and body/response schemas for primary routes. `RegisterOwnerDto` has `@ApiProperty` metadata. Zod-backed schemas are represented with explicit `@ApiBody` schemas because they are not class DTOs and do not generate `@ApiProperty` metadata automatically. Other inline body routes are documented as current source shapes and remain less strictly described than typed DTO contracts.

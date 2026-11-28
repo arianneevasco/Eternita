@@ -1,13 +1,19 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "../auth/auth.guard";
 import { LegacyService } from "./legacy.service";
+import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 @Controller("legacy")
 @UseGuards(AuthGuard)
+@ApiTags("Legacy access")
+@ApiBearerAuth()
 export class LegacyController {
   constructor(private readonly legacyService: LegacyService) {}
 
   @Post("request")
+  @ApiOperation({ summary: "Request access to an owner's legacy records" })
+  @ApiBody({ schema: { type: "object", required: ["ownerUid"], properties: { ownerUid: { type: "string" } } } })
+  @ApiCreatedResponse({ description: "Safe legacy request fields" })
   async requestAccess(
     @Req() request: { uid: string },
     @Body() body: { ownerUid: string },

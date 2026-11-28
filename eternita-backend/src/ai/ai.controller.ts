@@ -13,6 +13,7 @@ import { GEMINI_MODEL_ID } from "./gemini.config";
 import { GeminiServiceError } from "./gemini-runtime";
 import { LegacyService } from "../legacy/legacy.service";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 const aiAskSchema = z.object({
   ownerUid: z.string().trim().min(1, "ownerUid is required"),
@@ -24,6 +25,8 @@ type AiAskBody = z.infer<typeof aiAskSchema>;
 
 @Controller("ai")
 @UseGuards(AuthGuard)
+@ApiTags("AI")
+@ApiBearerAuth()
 export class AiController {
   constructor(
     private readonly contextFilter: ContextFilterService,
@@ -34,6 +37,8 @@ export class AiController {
   ) {}
 
   @Post("ask")
+  @ApiOperation({ summary: "Ask a question grounded in policy-permitted entries" })
+  @ApiBody({ schema: { type: "object", additionalProperties: false, required: ["ownerUid", "question"], properties: { ownerUid: { type: "string", minLength: 1 }, question: { type: "string", minLength: 1, maxLength: 4000 }, promptCategory: { type: "string", maxLength: 100 } } } })
   async askQuestion(
     @Req() request: { uid: string },
     @Body(new ZodValidationPipe(aiAskSchema)) body: AiAskBody,

@@ -12,10 +12,15 @@ import { getDb } from "../config/firebase";
 import { initializeFirebase } from "../config/firebase";
 import { AuthGuard } from "../auth/auth.guard";
 import { RegisterOwnerDto } from "./dto/register-owner.dto";
+import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 @Controller("auth")
+@ApiTags("Authentication and profile")
 export class AccountController {
   @Post("register-owner")
+  @ApiOperation({ summary: "Register an owner and create their profile" })
+  @ApiBody({ type: RegisterOwnerDto })
+  @ApiCreatedResponse({ schema: { example: { uid: "firebase-uid", role: "owner", name: "Owner Name", handle: "owner" } } })
   async registerOwner(@Body() body: RegisterOwnerDto) {
     initializeFirebase();
     const { getAuth } = await import("firebase-admin/auth");
@@ -88,6 +93,8 @@ export class AccountController {
   }
 
   @Get("me")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get the authenticated user's profile" })
   @UseGuards(AuthGuard)
   async me(@Req() request: any) {
     const db = getDb();

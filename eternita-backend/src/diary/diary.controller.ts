@@ -19,15 +19,21 @@ import {
   CreateEntryDto,
   EditEntryDto,
 } from "./dto";
+import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 @Controller("entries")
 @UseGuards(AuthGuard)
+@ApiTags("Diary entries")
+@ApiBearerAuth()
 export class DiaryController {
   constructor(
     private readonly diaryService: DiaryService
   ) {}
 
   @Post()
+  @ApiOperation({ summary: "Create a diary entry" })
+  @ApiBody({ schema: { type: "object", required: ["title", "originalText", "journal", "entryDate", "entryTime", "mood"], properties: { title: { type: "string", minLength: 1, maxLength: 200 }, originalText: { type: "string", minLength: 1, maxLength: 20000 }, journal: { type: "string", minLength: 1, maxLength: 100 }, entryDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }, entryTime: { type: "string", pattern: "^\\d{2}:\\d{2}$" }, releaseDate: { type: "string" }, mood: { type: "integer", minimum: 1, maximum: 5 }, people: { type: "array", items: { type: "string" } }, tags: { type: "array", items: { type: "string" } }, isFavorite: { type: "boolean" }, isDraft: { type: "boolean", default: true }, writingMode: { type: "string", enum: ["verbatim", "lightfix", "review"] } } } })
+  @ApiCreatedResponse({ description: "Entry document with generated identifiers, version and hash fields" })
   create(
     @Req() request: any,
     @Body(new ZodValidationPipe(createEntrySchema))

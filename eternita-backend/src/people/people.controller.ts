@@ -3,6 +3,7 @@ Get,Param,Post,Req,UseGuards,
 } from "@nestjs/common";
 import { getDb } from "../config/firebase";
 import { AuthGuard } from "../auth/auth.guard";
+import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 interface CreateInviteDto {
   handle: string;
@@ -16,8 +17,13 @@ interface JoinDto {
 
 @Controller()
 @UseGuards(AuthGuard)
+@ApiTags("People and invitations")
+@ApiBearerAuth()
 export class PeopleController {
   @Post("invites")
+  @ApiOperation({ summary: "Create a beneficiary invitation" })
+  @ApiBody({ schema: { type: "object", required: ["handle", "name"], properties: { handle: { type: "string" }, name: { type: "string" } } } })
+  @ApiCreatedResponse({ description: "Invitation code and expiration" })
   async createInvite(
     @Req() request: any,
     @Body() body: CreateInviteDto
@@ -56,6 +62,8 @@ export class PeopleController {
   }
 
   @Post("auth/join")
+  @ApiOperation({ summary: "Join using an invitation code" })
+  @ApiBody({ schema: { type: "object", required: ["code", "name"], properties: { code: { type: "string" }, name: { type: "string" } } } })
   async join(
     @Req() request: any,
     @Body() body: JoinDto
@@ -131,6 +139,7 @@ export class PeopleController {
   }
 
   @Get("people")
+  @ApiOperation({ summary: "List trusted people associated with the owner" })
   async getPeople(@Req() request: any) {
     const db = getDb();
     const ownerUid = request.uid;
