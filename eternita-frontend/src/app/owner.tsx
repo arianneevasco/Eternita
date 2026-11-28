@@ -57,6 +57,7 @@ export default function OwnerHomeRoute() {
         router.replace("/sign-in");
       }}
       onNavigateToAsker={() => router.replace("/asker")}
+      onOpenRegister={() => router.push("/second-user-preview")}
     />
   );
 }

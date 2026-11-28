@@ -1,47 +1,65 @@
-import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useMemo, useState, type ReactNode } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { createInvite, type Invite } from "../../features/people/api";
 import type { DiaryEntryItem } from "./OwnerHomeScreen";
 
 type Screen = "Ask" | "Star" | "Legacy" | "Vault";
+type Props = { screen: Screen; entries: DiaryEntryItem[]; idToken?: string; onOpenRegister?: () => void };
+const ink = "#48280E";
+const edge = "#684016";
+const orange = "#FFAB58";
+const card = "#E09A4D";
+const months = ["2026-10", "2026-01", "2025-03", "2025-02", "2024-03"];
+const moods = [
+  { label: "Soft care", icon: "star-four-points" as const },
+  { label: "Happiness", icon: "weather-sunny" as const },
+  { label: "Pride", icon: null },
+  { label: "Peace", icon: "moon-waning-crescent" as const },
+];
 
-type Props = {
-  screen: Screen;
-  entries: DiaryEntryItem[];
-  idToken?: string;
-};
+function Saturn({ small = false }: { small?: boolean }) {
+  return <View style={[styles.saturn, small && styles.saturnSmall]}><View style={[styles.saturnRing, small && styles.saturnRingSmall]} /><View style={[styles.saturnBody, small && styles.saturnBodySmall]} /></View>;
+}
 
-const colors = {
-  ink: "#44280B",
-  muted: "#684B31",
-  background: "#FFAB58",
-  card: "#F4C48F",
-  border: "#593817",
-  accent: "#995D1F",
-  light: "#FFF7EA",
-};
+function Card({ children, style }: { children: ReactNode; style?: object }) {
+  return <View style={[styles.card, style]}>{children}</View>;
+}
 
-const feelings = ["Soft care", "Happiness", "Pride", "Peace"];
-
-export function OwnerAuxiliaryScreen({ screen, entries, idToken }: Props) {
+export function OwnerAuxiliaryScreen({ screen, entries, idToken, onOpenRegister }: Props) {
+  const { width } = useWindowDimensions();
   const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("I answer only from entries you are allowed to see, I cite their dates, and I never pretend to be Maria.");
+  const [month, setMonth] = useState(months[0]);
+  const [selectedDay, setSelectedDay] = useState(11);
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
   const [invite, setInvite] = useState<Invite>();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(13);
+  const [policy, setPolicy] = useState("default_mode(light_fix).");
+  const [compiled, setCompiled] = useState(false);
+  const [pretendDate, setPretendDate] = useState("2027-12-01");
+
+  const firstOfMonth = useMemo(() => {
+    const [year, mon] = month.split("-").map(Number);
+    return new Date(year, mon - 1, 1);
+  }, [month]);
+  const days = useMemo(() => {
+    const firstDay = firstOfMonth.getDay();
+    const count = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth() + 1, 0).getDate();
+    const previousCount = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth(), 0).getDate();
+    return Array.from({ length: 35 }, (_, index) => {
+      const date = index - firstDay + 1;
+      if (date < 1) return { date: previousCount + date, outside: true };
+      if (date > count) return { date: date - count, outside: true };
+      return { date, outside: false };
+    });
+  }, [firstOfMonth]);
 
   async function registerPerson() {
     if (!idToken) {
-      setMessage("Sign in with your owner account to create an invite.");
+      setMessage("Registration is available when connected to the owner account.");
       return;
     }
     if (!name.trim() || !handle.trim()) {
@@ -49,16 +67,10 @@ export function OwnerAuxiliaryScreen({ screen, entries, idToken }: Props) {
       return;
     }
     setBusy(true);
-    setMessage("");
     try {
-      const result = await createInvite(idToken, {
-        name: name.trim(),
-        handle: handle.trim().replace(/^@/, "").toLowerCase(),
-      });
+      const result = await createInvite(idToken, { name: name.trim(), handle: handle.trim().replace(/^@/, "").toLowerCase() });
       setInvite(result);
       setMessage("Invite created. Share this code with the person you trust.");
-      setName("");
-      setHandle("");
     } catch {
       setMessage("We could not create the invite. Check the details and try again.");
     } finally {
@@ -67,189 +79,144 @@ export function OwnerAuxiliaryScreen({ screen, entries, idToken }: Props) {
   }
 
   if (screen === "Ask") {
-    return (
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Ask Eternita</Text>
-        <Text style={styles.subtitle}>A thoughtful way to ask about shared memories.</Text>
-        <View style={styles.notice}>
-          <View style={styles.row}>
-            <Text style={styles.noticeTitle}>Access is locked</Text>
-            <Text style={styles.badge}>PRIVATE</Text>
-          </View>
-          <Text style={styles.body}>
-            The owner decides what can be shared. Access is available only when the owner’s rules allow it and legacy access is active.
-          </Text>
-        </View>
-        <Text style={styles.sectionTitle}>Ask about a memory</Text>
-        <TextInput
-          value={question}
-          onChangeText={setQuestion}
-          placeholder="Ask question....."
-          placeholderTextColor={colors.muted}
-          multiline
-          textAlignVertical="top"
-          style={[styles.input, styles.question]}
-          accessibilityLabel="Ask about a memory"
-        />
-        <Pressable disabled style={[styles.action, styles.actionDisabled]}>
-          <Text style={styles.actionText}>Ask a question  ›</Text>
-        </Pressable>
-        <Text style={styles.caption}>
-          Questions are answered only from memories the owner has permitted. Asking is unavailable while the vault is sealed.
-        </Text>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyTitle}>Your conversation will begin here</Text>
-          <Text style={styles.body}>No permitted diary entries are available to answer this question.</Text>
-        </View>
-      </ScrollView>
-    );
+    function askQuestion() {
+      if (!question.trim()) return;
+      setAnswer(`I can only answer from entries you are allowed to see. There is no matching entry in this local preview for “${question.trim()}”.`);
+      setQuestion("");
+    }
+    return <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Text style={styles.title}>Ask Eternita</Text>
+      <View style={styles.legal}><MaterialCommunityIcons name="scale-balance" size={15} color="#8E2118" /><Text style={styles.legalText}>Not a legal will. Philippine law has formal requirements for wills.</Text></View>
+      <Text style={styles.asking}>Asking as the <Text style={{ color: "#438BD5" }}>owner</Text> vault is <Text style={{ color: "#8951A2" }}>Sealed</Text>. Pretend today is:</Text>
+      <View style={styles.dateSwitch}>{["2027-12-01", "2028-03-01"].map((date) => <Pressable key={date} onPress={() => setPretendDate(date)} style={[styles.dateOption, pretendDate === date && styles.dateSelected]}><Text style={[styles.body, pretendDate === date && styles.dateSelectedText]}>{date}</Text></Pressable>)}</View>
+      <Card style={styles.answerCard}><Text style={styles.body}>{answer}</Text></Card>
+      <Pressable onPress={() => setAnswer("There is no entry in the local preview that answers “Did he think about me?”.") } style={styles.suggestion}><Text style={styles.body}>Did he think about me?</Text></Pressable>
+      <View style={styles.askInputRow}><TextInput value={question} onChangeText={setQuestion} placeholder="Ask question....." placeholderTextColor="#755332" style={styles.askInput} onSubmitEditing={askQuestion} returnKeyType="send"/><Pressable onPress={askQuestion} accessibilityLabel="Send question"><MaterialCommunityIcons name="send" size={18} color={ink} /></Pressable></View>
+      <View style={styles.speechRow}><View style={styles.mic}><MaterialCommunityIcons name="microphone" size={17} color={ink} /></View><Text style={styles.caption}>Speech-to-text keeps the raw transcript and a cleaned copy.</Text></View>
+    </ScrollView>;
   }
 
   if (screen === "Star") {
-    const days = Array.from({ length: 35 }, (_, index) => index - 2);
-    return (
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Constellation</Text>
-        <Text style={styles.subtitle}>Mood Insight</Text>
-        <View style={styles.panel}>
-          <Text style={styles.sectionTitle}>Monthly Mood Calendar</Text>
-          <View style={styles.monthRow}>
-            <Pressable onPress={() => setSelectedDay(1)} accessibilityLabel="Previous month">
-              <Text style={styles.monthArrow}>‹</Text>
-            </Pressable>
-            <Text style={styles.monthTitle}>2026-10</Text>
-            <Pressable onPress={() => setSelectedDay(31)} accessibilityLabel="Next month">
-              <Text style={styles.monthArrow}>›</Text>
-            </Pressable>
-          </View>
-          <View style={styles.calendar}>
-            {["Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map((day) => (
-              <Text key={day} style={styles.weekday}>{day}</Text>
-            ))}
-            {days.map((day, index) => {
-              const inMonth = day > 0 && day <= 31;
-              const active = day === selectedDay;
-              return (
-                <Pressable
-                  key={`${day}-${index}`}
-                  disabled={!inMonth}
-                  onPress={() => setSelectedDay(day)}
-                  style={[styles.day, active && styles.dayActive]}
-                  accessibilityLabel={inMonth ? `October ${day}` : undefined}
-                >
-                  <Text style={[styles.dayText, !inMonth && styles.dayOutside, active && styles.dayTextActive]}>
-                    {inMonth ? day : ""}
-                  </Text>
-                  {inMonth && [5, 12, 19, 28].includes(day) ? (
-                    <Text style={[styles.dayMood, active && styles.dayTextActive]}>
-                      {day % 2 ? "✦" : "☾"}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={styles.selectionNote}>
-            <Text style={styles.sectionTitle}>Tuesday - 2 Entries - Mood</Text>
-            <Text style={styles.body}>Selected day: October {selectedDay}</Text>
-          </View>
-        </View>
-        <View style={styles.feelingList}>
-          {feelings.map((feeling, index) => (
-            <View key={feeling} style={styles.feelingRow}>
-              <Text style={styles.feelingGlyph}>{["✦", "☼", "❂", "☾"][index]}</Text>
-              <Text style={styles.body}>{feeling}</Text>
-            </View>
-          ))}
-        </View>
-        <Text style={styles.caption}>Mood symbols appear on days with saved entries. {entries.length} entries are in your diary.</Text>
-      </ScrollView>
-    );
+    return <ScrollView contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Constellation</Text>
+      <View style={[styles.starfield, width >= 760 && styles.starfieldWide]}>
+        {[["9%", "19%", 3], ["21%", "13%", 2], ["44%", "19%", 2], ["66%", "11%", 3], ["84%", "31%", 2], ["38%", "63%", 2], ["73%", "76%", 2], ["12%", "79%", 2], ["53%", "43%", 3], ["90%", "64%", 2], ["29%", "47%", 2], ["60%", "88%", 2]].map(([left, top, size], i) => <View key={i} style={[styles.starDot, { left: left as `${number}%`, top: top as `${number}%`, width: size as number, height: size as number }]} />)}
+        <View style={styles.constellationLine} />
+        <View style={styles.planet}><Saturn /></View>
+        <MaterialCommunityIcons name="moon-waning-crescent" size={27} color="#168EE8" style={styles.moon} />
+        <MaterialCommunityIcons name="star-four-points" size={25} color="#66C9FF" style={styles.constellationStar} />
+      </View>
+      <View style={styles.symbolCaption}><Text style={styles.body}>Top a symbol.</Text></View>
+      <Text style={styles.sectionTitle}>Emotion Symbol</Text>
+      <View style={styles.emotionCard}>{moods.map((mood) => <Pressable key={mood.label} style={styles.emotionItem}>{mood.icon ? <MaterialCommunityIcons name={mood.icon} size={23} color={ink} /> : <Saturn small />}<Text style={styles.emotionLabel}>{mood.label}</Text></Pressable>)}</View>
+      <Text style={[styles.title, styles.moodTitle]}>Mood Insight</Text>
+      <Text style={styles.sectionTitle}>Monthly Mood Calendar</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.months}>{months.map((item) => <Pressable key={item} onPress={() => { setMonth(item); setSelectedDay(11); }} style={[styles.monthChip, month === item && styles.monthChipSelected]}><Text style={styles.monthText}>{item}</Text></Pressable>)}</ScrollView>
+      <View style={styles.calendar}>{["Sun", "Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map((day) => <View key={day} style={styles.weekday}><Text style={styles.weekdayText}>{day}</Text></View>)}{days.map((day, index) => <Pressable key={index} disabled={day.outside} onPress={() => setSelectedDay(day.date)} style={[styles.calendarDay, !day.outside && selectedDay === day.date && styles.calendarDaySelected]}><Text style={[styles.calendarDate, day.outside && styles.calendarOutside]}>{day.date}</Text>{!day.outside && day.date === 11 ? <MaterialCommunityIcons name="star-four-points" size={15} color="#65C8FF" style={styles.dayMoodIcon} /> : null}</Pressable>)}</View>
+    </ScrollView>;
   }
 
   if (screen === "Legacy") {
-    return (
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Legacy</Text>
-        <Text style={styles.subtitle}>Choose what can be shared, and with whom.</Text>
-        <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>No second user yet</Text>
-          <Text style={styles.body}>Nobody can see anything until you register a trusted person and choose what they can access.</Text>
-        </View>
-        <Text style={styles.sectionTitle}>Register a second user</Text>
-        <TextInput value={name} onChangeText={setName} placeholder="Their name" placeholderTextColor={colors.muted} style={styles.input} />
-        <TextInput value={handle} onChangeText={setHandle} placeholder="Unique handle" placeholderTextColor={colors.muted} autoCapitalize="none" style={styles.input} />
-        <Pressable onPress={registerPerson} disabled={busy} style={styles.action} accessibilityRole="button">
-          <Text style={styles.actionText}>{busy ? "Creating invite…" : "Create invite"}</Text>
-        </Pressable>
-        {invite ? <View style={styles.codeCard}><Text style={styles.badge}>INVITE CODE</Text><Text selectable style={styles.inviteCode}>{invite.code}</Text><Text style={styles.body}>For @{invite.handle} · expires {invite.expiresAt}</Text></View> : null}
-        {message ? <Text accessibilityRole="alert" style={styles.caption}>{message}</Text> : null}
-        <Text style={styles.sectionTitle}>The 3 parts of the AI</Text>
-        <View style={styles.panel}>
-          <Text style={styles.body}>Model · Gemini 2.5 Flash</Text>
-          <Text style={styles.body}>Tools · search entries, check access, fetch entry, cite formatter</Text>
-          <Text style={styles.body}>Instructions · use only permitted entries, cite dates, and say when there is no record.</Text>
-        </View>
-        <Text style={styles.caption}>A Letter of Wishes is a personal message, not a legal will.</Text>
-      </ScrollView>
-    );
+    return <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Text style={styles.title}>Legacy Mode</Text>
+      <Text style={styles.sectionTitle}>Second User: None</Text>
+      <View style={styles.statusCard}><Text style={styles.italic}>No one is registered yet. Nobody can see anything.</Text></View>
+      <Pressable style={styles.registerButton} onPress={onOpenRegister ?? (() => setMessage("Scroll down to register a trusted person."))}><Text style={styles.buttonText}>+Register Second User</Text></Pressable>
+      <Text style={styles.sectionTitle}>How to register someone Safely</Text>
+      <Card style={styles.safetyCard}><Text style={styles.body}>• Pick someone you trust and say how they are related. Eternita suggests a starting access level.{"\n"}• Start with the least access. You can add more before the death trigger.{"\n"}• Prefer summaries over full reads for sensitive topics.{"\n"}• Use release dates for letters, so they open only when you choose.{"\n"}• Add deny rules for private topics. Deny always beats allow.{"\n"}• They verify their identity (ID digits and face) the first time they sign in.{"\n"}• After the death trigger the policy is frozen and they can only read, never edit.</Text></Card>
+      <Text style={styles.sectionTitle}>Death Trigger</Text>
+      <Card><Text style={styles.body}>After it, the policy is frozen and second user may ask question.</Text><Pressable style={styles.outlineButton} onPress={() => setMessage("Death trigger simulation is unavailable in UI preview.")}><Text style={styles.buttonTextDark}>Fire trigger (Simulate)</Text></Pressable></Card>
+      <Pressable style={styles.policyHeading} onPress={() => setCompiled(false)}><Text style={styles.buttonText}>▾ Advance Policy Text And Prolog Facts</Text><Text style={styles.captionLight}>Registering or editing a second user rewrites this text.</Text></Pressable>
+      <View style={styles.policyPanel}><TextInput value={policy} onChangeText={setPolicy} multiline style={styles.policyInput} /><Pressable style={styles.compileButton} onPress={() => setCompiled(true)}><Text style={styles.buttonText}>Compile</Text></Pressable>{compiled ? <><Text style={styles.sectionTitle}>Compiled Facts</Text><Text style={styles.body}>default_mode(light_fix).</Text></> : null}</View>
+      <Text style={styles.sectionTitle}>Second User</Text><Text style={styles.titleSmall}>Register a trusted person</Text>
+      <TextInput value={name} onChangeText={setName} placeholder="Full name (use an invented name)" placeholderTextColor="#755332" style={styles.formInput} />
+      <TextInput value={handle} onChangeText={setHandle} placeholder="Email or Phone" placeholderTextColor="#755332" style={styles.formInput} />
+      <Text style={styles.body}>Fill sample: Maria Dela Cruz</Text><Text style={styles.sectionTitle}>Relationship</Text><View style={styles.relationship}><Text style={styles.captionLight}>Trusted person</Text></View>
+      <Card><Text style={styles.smallLabel}>SUGGESTED ACCESS</Text><Text style={styles.body}>A person you trust. Start with the least access: they learn that entries mentioning them exist, read summaries of family entries, and receive your letter on its date. Business notes stay hidden. Add more only if you need to.</Text></Card>
+      <Text style={styles.sectionTitle}>What they may see</Text><Card><Text style={styles.smallLabel}>SUGGESTED ACCESS</Text><Text style={styles.body}>A person you trust. Start with the least access: they learn that entries mentioning them exist, read summaries of family entries, and receive your letter on its date. Business notes stay hidden. Add more only if you need to.</Text></Card>
+      <Pressable onPress={registerPerson} disabled={busy} style={styles.registerButton}><Text style={styles.buttonText}>{busy ? "Registering…" : "Register Second User"}</Text></Pressable>
+      {invite ? <Card><Text style={styles.sectionTitle}>Invite code</Text><Text style={styles.body}>{invite.code}</Text></Card> : null}{message ? <Text style={styles.caption}>{message}</Text> : null}
+    </ScrollView>;
   }
 
-  return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Vault</Text>
-      <Text style={styles.subtitle}>Your private diary is sealed and protected.</Text>
-      <View style={styles.notice}>
-        <Text style={styles.noticeTitle}>Hash chain: {entries.length} blocks</Text>
-        <Text style={styles.body}>Each saved entry is linked to its predecessor. Editing adds a new version to the chain; deletion hides an entry without removing its history.</Text>
-      </View>
-      <Text style={styles.sectionTitle}>How the vault is protected</Text>
-      <View style={styles.panel}>
-        <Text style={styles.body}>Diary model · object-oriented</Text>
-        <Text style={styles.body}>Entry pipeline · functional</Text>
-        <Text style={styles.body}>Writing modes · object-oriented</Text>
-        <Text style={styles.body}>Access rules · logic (Prolog)</Text>
-        <Text style={styles.body}>Legacy policy · language design</Text>
-      </View>
-      <Text style={styles.caption}>Your entries remain private unless you choose to share them.</Text>
-    </ScrollView>
-  );
+  return <ScrollView contentContainerStyle={styles.content}>
+    <Text style={styles.title}>Vault</Text>
+    <Card style={styles.hashCard}><Text style={styles.sectionTitle}>Hash chain: {entries.length + 3} blocks</Text><Text style={styles.body}>Start with the least access. You can add more before the death trigger.</Text></Card>
+    <Text style={styles.sectionTitle}>The 3 parts of the AI</Text>
+    <Card style={styles.aiCard}><Text style={styles.body}><Text style={styles.bold}>Model</Text> · Gemini 2.5 Flash{"\n"}<Text style={styles.bold}>Tools</Text> · search_entries, check_access, fetch_entry, cite_formatter{"\n"}<Text style={styles.bold}>Instructions</Text> · use only permitted entries, cite dates, quote real words, never pretend to be Ramon, say so when there is no record</Text></Card>
+    <Text style={styles.sectionTitle}>Paradigm per component</Text>
+    <Card style={styles.paradigmCard}><Text style={styles.body}>Diary model: object-oriented{"\n"}Entry pipeline: functional{"\n"}Writing modes: object-oriented{"\n"}Access rules: logic (Prolog){"\n"}Legacy Policy: language design{"\n"}Grounded Q&amp;A: scripting</Text></Card>
+  </ScrollView>;
 }
 
 const styles = StyleSheet.create({
-  content: { gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 108 },
-  title: { color: colors.ink, fontFamily: "EternitaDisplay", fontSize: 32, lineHeight: 38 },
-  subtitle: { color: colors.ink, fontFamily: "Georgia", fontStyle: "italic", fontSize: 13 },
-  sectionTitle: { color: colors.ink, fontFamily: "EternitaDisplay", fontSize: 19 },
-  body: { color: colors.ink, fontFamily: "Georgia", fontSize: 13, lineHeight: 19 },
-  notice: { padding: 14, gap: 8, backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16 },
-  noticeTitle: { color: colors.ink, fontFamily: "EternitaDisplay", fontSize: 19 },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  badge: { color: colors.accent, borderColor: colors.border, borderWidth: 1, overflow: "hidden", borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4, fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
-  input: { minHeight: 44, borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, backgroundColor: "#C99866", color: colors.ink, paddingHorizontal: 12, paddingVertical: 10, fontFamily: "Georgia", fontSize: 14 },
-  question: { minHeight: 108 },
-  action: { minHeight: 40, justifyContent: "center", alignItems: "center", backgroundColor: colors.accent, borderColor: colors.border, borderWidth: 1, borderRadius: 18 },
-  actionDisabled: { opacity: 0.55 },
-  actionText: { color: colors.light, fontFamily: "EternitaDisplay", fontSize: 16 },
-  caption: { color: colors.muted, fontFamily: "Georgia", fontSize: 11, lineHeight: 16, textAlign: "center" },
-  emptyState: { minHeight: 118, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: "#E6A361", alignItems: "center", justifyContent: "center", padding: 18, gap: 8 },
-  emptyTitle: { color: colors.ink, fontFamily: "EternitaDisplay", fontSize: 18, textAlign: "center" },
-  panel: { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 14, gap: 8 },
-  monthRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20 },
-  monthTitle: { color: colors.ink, fontFamily: "EternitaDisplay", fontSize: 19 },
-  monthArrow: { color: colors.accent, fontSize: 30, paddingHorizontal: 12 },
-  calendar: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  weekday: { width: "14.28%", textAlign: "center", color: colors.muted, fontSize: 10, fontWeight: "700", paddingVertical: 7 },
-  day: { width: "14.28%", minHeight: 43, alignItems: "center", justifyContent: "center", borderRadius: 22 },
-  dayActive: { backgroundColor: colors.accent },
-  dayText: { color: colors.ink, fontSize: 12 },
-  dayTextActive: { color: colors.light, fontWeight: "700" },
-  dayOutside: { color: "transparent" },
-  dayMood: { color: colors.accent, fontSize: 9, lineHeight: 10 },
-  selectionNote: { borderTopWidth: 1, borderColor: "#C58A51", paddingTop: 10, gap: 4 },
-  feelingList: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  feelingRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 18, backgroundColor: "#E9AE70" },
-  feelingGlyph: { color: colors.accent, fontSize: 14 },
-  codeCard: { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 14, alignItems: "center", padding: 14, gap: 6 },
-  inviteCode: { color: colors.ink, fontFamily: "EternitaDisplay", fontSize: 27, letterSpacing: 2 },
+  content: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 106, gap: 7 },
+  title: { color: ink, fontFamily: "EternitaDisplayBold", fontSize: 30, lineHeight: 38 },
+  titleSmall: { color: ink, fontFamily: "EternitaDisplayBold", fontSize: 23, lineHeight: 29 },
+  sectionTitle: { color: ink, fontFamily: "EternitaDisplayBold", fontSize: 15, lineHeight: 19 },
+  body: { color: ink, fontFamily: "Georgia", fontSize: 12, lineHeight: 16 },
+  bold: { fontFamily: "Georgia", fontWeight: "700" },
+  caption: { color: "#755332", fontFamily: "Georgia", fontSize: 11, lineHeight: 15 },
+  captionLight: { color: "#F8D9B8", fontFamily: "Georgia", fontSize: 11 },
+  card: { padding: 12, gap: 9, backgroundColor: card, borderWidth: 1, borderColor: edge, borderRadius: 10 },
+  legal: { minHeight: 39, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, borderWidth: 1, borderColor: "#AA291B", borderRadius: 10, backgroundColor: "#E39B54" },
+  legalText: { color: "#FAE3D0", fontFamily: "EternitaScript", fontSize: 14, flexShrink: 1 },
+  asking: { color: "#593817", fontFamily: "Georgia", fontSize: 12, lineHeight: 18, paddingHorizontal: 5 },
+  dateSwitch: { flexDirection: "row", borderWidth: 2, borderColor: edge, borderRadius: 20, overflow: "hidden" },
+  dateOption: { flex: 1, minHeight: 32, justifyContent: "center", alignItems: "center", backgroundColor: "#FFB362" },
+  dateSelected: { backgroundColor: "#995D1F" },
+  dateSelectedText: { color: "#FFF4E4" },
+  answerCard: { minHeight: 66, justifyContent: "center", borderRadius: 18, backgroundColor: "#FFB362", marginTop: 5, paddingHorizontal: 18 },
+  suggestion: { alignSelf: "flex-start", paddingHorizontal: 15, paddingVertical: 8, borderWidth: 1, borderColor: "#A66624", backgroundColor: "#FFB362", borderRadius: 18, marginTop: 2 },
+  askInputRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, minHeight: 45, borderRadius: 9, backgroundColor: "#C99866" },
+  askInput: { flex: 1, paddingVertical: 10, fontFamily: "Georgia", fontSize: 13, color: ink },
+  speechRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 5 },
+  mic: { width: 30, height: 30, borderRadius: 16, backgroundColor: "#D79A54", alignItems: "center", justifyContent: "center" },
+  starfield: { height: 220, borderRadius: 18, borderWidth: 1, borderColor: "#28170C", backgroundColor: "#020203", overflow: "hidden", position: "relative", marginTop: 1 },
+  starfieldWide: { height: 290 },
+  starDot: { position: "absolute", borderRadius: 4, backgroundColor: "#FFF", shadowColor: "#FFF", shadowOpacity: 0.9, shadowRadius: 7 },
+  constellationLine: { position: "absolute", top: "50%", left: "15%", width: "69%", borderTopWidth: 1.5, borderColor: "#04D8F4", borderStyle: "dashed", transform: [{ rotate: "20deg" }] },
+  planet: { position: "absolute", left: "14%", top: "18%" },
+  saturn: { width: 34, height: 29, alignItems: "center", justifyContent: "center" },
+  saturnRing: { position: "absolute", width: 34, height: 13, borderRadius: 12, borderWidth: 2, borderColor: "#CAD1DC", transform: [{ rotate: "-16deg" }] },
+  saturnBody: { width: 18, height: 18, borderRadius: 10, backgroundColor: "#D6DCE5", borderWidth: 1, borderColor: "#69727F" },
+  saturnSmall: { width: 28, height: 24 },
+  saturnRingSmall: { width: 27, height: 11, borderColor: ink, borderWidth: 1.5 },
+  saturnBodySmall: { width: 14, height: 14, backgroundColor: "#9B6A35", borderColor: "#593817" },
+  moon: { position: "absolute", left: "43%", top: "48%" },
+  constellationStar: { position: "absolute", right: "28%", bottom: "23%" },
+  symbolCaption: { minHeight: 35, justifyContent: "center", paddingHorizontal: 14, borderWidth: 1, borderColor: edge, borderRadius: 10, backgroundColor: card },
+  emotionCard: { minHeight: 68, flexDirection: "row", justifyContent: "space-around", alignItems: "center", borderWidth: 1, borderColor: edge, borderRadius: 10, backgroundColor: card, paddingVertical: 7 },
+  emotionItem: { alignItems: "center", gap: 3, minWidth: 60 },
+  emotionLabel: { color: ink, fontFamily: "Georgia", fontSize: 10 },
+  moodTitle: { marginTop: 1, fontSize: 29, lineHeight: 34 },
+  months: { gap: 9, paddingRight: 8 },
+  monthChip: { minWidth: 70, height: 22, alignItems: "center", justifyContent: "center", paddingHorizontal: 10, borderRadius: 14, borderWidth: 1, borderColor: edge, backgroundColor: "#EAA259" },
+  monthChipSelected: { backgroundColor: "#995D1F" },
+  monthText: { color: ink, fontFamily: "Georgia", fontSize: 9 },
+  calendar: { flexDirection: "row", flexWrap: "wrap", backgroundColor: "#EAA259", borderRadius: 4, overflow: "hidden" },
+  weekday: { width: `${100 / 7}%`, height: 29, justifyContent: "center", alignItems: "center", backgroundColor: "#DC954A" },
+  weekdayText: { color: ink, fontFamily: "Georgia", fontWeight: "700", fontSize: 10 },
+  calendarDay: { width: `${100 / 7}%`, height: 38, alignItems: "center", justifyContent: "center", borderRightWidth: 1, borderBottomWidth: 1, borderColor: "#AD6A2F", position: "relative" },
+  calendarDaySelected: { backgroundColor: "#FFB76E" },
+  calendarDate: { color: ink, fontFamily: "Georgia", fontWeight: "700", fontSize: 11 },
+  calendarOutside: { color: "#9E6637" },
+  dayMoodIcon: { position: "absolute", right: 5, top: 7 },
+  statusCard: { minHeight: 39, justifyContent: "center", paddingHorizontal: 14, borderWidth: 1, borderColor: edge, borderRadius: 10, backgroundColor: card },
+  italic: { color: "#F8E5D1", fontFamily: "EternitaScript", fontSize: 14, fontStyle: "italic" },
+  registerButton: { minHeight: 36, justifyContent: "center", alignItems: "center", borderRadius: 18, backgroundColor: "#A75905", borderColor: "#B16B20", borderWidth: 2 },
+  buttonText: { color: "#FFF6EA", fontFamily: "EternitaDisplayBold", fontSize: 14 },
+  buttonTextDark: { color: ink, fontFamily: "EternitaDisplayBold", fontSize: 13 },
+  safetyCard: { padding: 11 },
+  outlineButton: { height: 29, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: edge, borderRadius: 14, backgroundColor: orange, marginTop: 4 },
+  policyHeading: { backgroundColor: "#AE6D2B", padding: 10, borderColor: edge, borderWidth: 1, borderTopLeftRadius: 7, borderTopRightRadius: 7, gap: 4 },
+  policyPanel: { padding: 10, gap: 6, backgroundColor: "#AE6D2B", borderColor: edge, borderWidth: 1, marginTop: -7 },
+  policyInput: { minHeight: 88, padding: 9, backgroundColor: "#C99866", color: ink, borderWidth: 1, borderColor: "#805326", borderRadius: 5, fontFamily: "Georgia", textAlignVertical: "top" },
+  compileButton: { height: 34, alignItems: "center", justifyContent: "center", borderRadius: 17, backgroundColor: "#895017" },
+  formInput: { minHeight: 36, paddingHorizontal: 10, borderWidth: 1, borderColor: "#805326", borderRadius: 9, backgroundColor: "#C99866", color: ink, fontFamily: "Georgia", fontSize: 11 },
+  relationship: { alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 5, backgroundColor: "#A76520", borderRadius: 14 },
+  smallLabel: { color: ink, fontFamily: "Georgia", fontWeight: "700", fontSize: 9 },
+  hashCard: { minHeight: 116 },
+  aiCard: { paddingHorizontal: 16 },
+  paradigmCard: { minHeight: 113 },
 });

@@ -28,6 +28,8 @@ export function parsePolicy(
 
   const peek = () => tokens[index];
   const advance = () => tokens[index++];
+  const isWord = (token: Token) =>
+    token.type === "KEYWORD" || token.type === "NAME";
 
   function fail(
     message: string,
@@ -43,7 +45,7 @@ export function parsePolicy(
     const token = peek();
 
     if (
-      token.kind !== "WORD" ||
+      !isWord(token) ||
       token.value !== value
     ) {
       fail(`Expected "${value}"`);
@@ -55,7 +57,7 @@ export function parsePolicy(
   function expectColon() {
     const token = peek();
 
-    if (token.kind !== "COLON") {
+    if (token.type !== "SYMBOL" || token.value !== ":") {
       fail('Expected ":"');
     }
 
@@ -65,7 +67,7 @@ export function parsePolicy(
   function name(): string {
     const token = peek();
 
-    if (token.kind !== "WORD") {
+    if (!isWord(token)) {
       fail("Expected a name");
     }
 
@@ -89,9 +91,9 @@ export function parsePolicy(
     const statements: PolicyStatement[] = [];
 
     while (
-      peek().kind !== "END" &&
+      peek().type !== "EOF" &&
       !(
-        peek().kind === "WORD" &&
+        isWord(peek()) &&
         peek().value === "protocol"
       )
     ) {
@@ -158,7 +160,8 @@ export function parsePolicy(
 
     if (
       kind !== "existence" &&
-      kind !== "summary"
+      kind !== "summary" &&
+      kind !== "full"
     ) {
       fail("Unsupported action");
     }
@@ -184,7 +187,7 @@ export function parsePolicy(
     return {
       type: "see",
       allow,
-      kind: kind as "existence" | "summary",
+      kind: kind as "existence" | "summary" | "full",
       by:
         by === "mentioning"
           ? "mentions"
@@ -205,12 +208,12 @@ export function parsePolicy(
     const titleParts: string[] = [];
 
     while (
-      peek().kind !== "END" &&
+      peek().type !== "EOF" &&
       !(
-        peek().kind === "WORD" &&
+        isWord(peek()) &&
         peek().value === "to" &&
-        tokens[index + 1]?.kind === "WORD" &&
-        tokens[index + 2]?.kind === "WORD" &&
+        isWord(tokens[index + 1]) &&
+        isWord(tokens[index + 2]) &&
         tokens[index + 2]?.value === "when"
       )
     ) {
@@ -238,7 +241,7 @@ export function parsePolicy(
 
     const dateToken = peek();
 
-    if (dateToken.kind !== "DATE") {
+    if (dateToken.type !== "DATE") {
       fail("Expected a date");
     }
 
@@ -296,7 +299,7 @@ export function parsePolicy(
   const protocols: Protocol[] = [];
   const names = new Set<string>();
 
-  while (peek().kind !== "END") {
+  while (peek().type !== "EOF") {
     const protocolNode = protocol();
 
     if (names.has(protocolNode.name)) {

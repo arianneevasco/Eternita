@@ -1,4 +1,4 @@
-import { BodoniModa_400Regular } from "@expo-google-fonts/bodoni-moda";
+import { BodoniModa_400Regular, BodoniModa_700Bold } from "@expo-google-fonts/bodoni-moda";
 import { Caveat_400Regular } from "@expo-google-fonts/caveat";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     EternitaDisplay: BodoniModa_400Regular,
+    EternitaDisplayBold: BodoniModa_700Bold,
     EternitaScript: Caveat_400Regular,
   });
 

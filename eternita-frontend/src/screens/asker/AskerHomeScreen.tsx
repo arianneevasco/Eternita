@@ -8,6 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 type Props = {
   onSignOut: () => void;
@@ -54,7 +55,7 @@ export function AskerHomeScreen({ onSignOut, onNavigateToOwner }: Props) {
         >
           <View style={styles.topBar}>
             <View style={styles.brandGroup}>
-              <Text style={styles.bookGlyph}>📖</Text>
+              <MaterialCommunityIcons name="book-open-page-variant-outline" size={27} color={COLORS.ink} />
               <Text style={styles.brand}>Eternita</Text>
             </View>
 
@@ -79,7 +80,7 @@ export function AskerHomeScreen({ onSignOut, onNavigateToOwner }: Props) {
                 accessibilityLabel="Switch to owner area"
                 accessibilityRole="button"
               >
-                <Text style={styles.iconGlyph}>⇄</Text>
+                <MaterialCommunityIcons name="swap-horizontal" size={16} color={COLORS.ink} />
               </Pressable>
               <Pressable
                 onPress={onSignOut}
@@ -87,7 +88,7 @@ export function AskerHomeScreen({ onSignOut, onNavigateToOwner }: Props) {
                 accessibilityLabel="Sign out"
                 accessibilityRole="button"
               >
-                <Text style={styles.iconGlyph}>⏻</Text>
+                <MaterialCommunityIcons name="power" size={15} color={COLORS.ink} />
               </Pressable>
             </View>
           </View>
@@ -198,11 +199,7 @@ export function AskerHomeScreen({ onSignOut, onNavigateToOwner }: Props) {
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
               >
-                <Text
-                  style={[styles.tabGlyph, isActive && styles.tabActiveColor]}
-                >
-                  {tab.glyph}
-                </Text>
+                <MaterialCommunityIcons name={({ Diary: "book-outline", Write: "pencil-outline", Ask: "star-four-points", Star: "brightness-5", Legacy: "timer-sand", Vault: "link-variant" } as const)[tab.key]} size={21} color={isActive ? COLORS.accent : "#8C5B2B"} />
                 <Text
                   style={[styles.tabLabel, isActive && styles.tabActiveColor]}
                 >

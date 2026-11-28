@@ -65,14 +65,21 @@ export async function apiRequest<T>(
     headers.Authorization = `Bearer ${idToken}`;
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body:
-      options.body === undefined
-        ? undefined
-        : JSON.stringify(options.body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body:
+        options.body === undefined
+          ? undefined
+          : JSON.stringify(options.body),
+    });
+  } catch {
+    throw new Error(
+      "Could not connect to the Eternita backend. Check that it is running and that EXPO_PUBLIC_API_BASE_URL is correct.",
+    );
+  }
   const responseText = await response.text();
   let payload: unknown;
 

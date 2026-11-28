@@ -146,7 +146,9 @@ cd eternita-backend
 npm install
 ```
 
-Create a `.env` file using `.env.example` as a guide. Never commit `.env`, Firebase service-account keys, API keys, or ID tokens.
+Copy `eternita-backend/.env.example` to `eternita-backend/.env`. Download a Firebase Admin service-account JSON for your project and place it at `eternita-backend/firebase/serviceAccountKey.json`, or set `FIREBASE_KEY_PATH` to its location. Never commit `.env` or the service-account key.
+
+The backend and frontend must use the same Firebase project. Enable Email/Password authentication and create a Firestore database in Firebase Console.
 
 ### Run the backend
 
@@ -154,7 +156,7 @@ Create a `.env` file using `.env.example` as a guide. Never commit `.env`, Fireb
 npm run start:dev
 ```
 
-The backend should run at:
+The backend listens on port 3000 by default (or `PORT` if set):
 
 ```text
 http://localhost:3000
@@ -209,7 +211,11 @@ The frontend displays screens and collects user input. The current app follows t
 5. Use the face-scan preview, then choose the Owner or Asker home area.
 6. The Owner and Asker pages are empty placeholders with navigation between them.
 
-This flow is frontend-only. It does not create an account, send email, check credentials, use the camera, or call the backend. The preview buttons on the sign-in screen also open either home area directly. Real authentication and backend features are separate future work and should be coordinated with the backend developer.
+Registration creates a Firebase Authentication account, then creates the owner's Firestore profile through the authenticated backend. Sign-in validates the Firebase user and backend profile. Diary entries are saved and loaded through the backend using Firebase ID tokens; Firestore is not accessed directly by the app.
+
+### Frontend environment
+
+Copy `eternita-frontend/.env.example` to `eternita-frontend/.env` and fill in the Firebase Web App configuration from the same Firebase project as the backend service-account key. Set `EXPO_PUBLIC_API_BASE_URL` to the backend address reachable from the frontend: use `http://localhost:3000` for web/iOS simulator, `http://10.0.2.2:3000` for the Android emulator, or your computer's LAN IP for a physical device. Restart Expo after changing `.env`.
 
 ### Start the frontend
 
@@ -237,7 +243,7 @@ npm run web
 | `eternita-frontend/src/features/` | Frontend API functions grouped by feature |
 | `eternita-frontend/src/api/` | Shared backend request client |
 
-When adding a screen, put its layout in `src/screens/` and connect it through `src/app/`. Do not connect this scaffold flow to the backend unless that work is separately agreed and coordinated with the backend developer. Keep credentials and private keys out of frontend source code.
+When adding a screen, put its layout in `src/screens/` and connect it through `src/app/`. Firebase Web configuration is public client configuration; never put Firebase Admin service-account credentials, passwords, or ID tokens in frontend source code.
 
 ## Important Files
 

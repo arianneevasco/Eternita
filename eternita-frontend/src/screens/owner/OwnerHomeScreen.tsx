@@ -9,6 +9,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ApiError } from "../../api/client";
 import {
   createEntry,
@@ -53,6 +54,8 @@ type Props = {
   entries?: DiaryEntryItem[];
   onOpenEntry?: (entry: DiaryEntryItem) => void;
   onSelectTab?: (tab: BottomTab) => void;
+  previewMode?: boolean;
+  onOpenRegister?: () => void;
 };
 
 const CATEGORIES: CategoryFilter[] = [
@@ -113,6 +116,8 @@ export function OwnerHomeScreen({
   entries: externalEntries,
   onOpenEntry,
   onSelectTab,
+  previewMode = false,
+  onOpenRegister,
 }: Props) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
@@ -142,7 +147,7 @@ export function OwnerHomeScreen({
     requestToken && !externalEntries && loadedToken !== requestToken
   );
 
-  const activeData = externalEntries ?? entries;
+  const activeData = previewMode ? entries : externalEntries ?? entries;
 
   const filteredEntries = useMemo(() => {
     const filtered =
@@ -163,7 +168,7 @@ export function OwnerHomeScreen({
     let isCurrent = true;
 
     listEntries(requestToken)
-      .then(({ entries: savedEntries }) => {
+      .then((savedEntries) => {
         if (isCurrent) {
           setEntries(savedEntries.map(mapBackendEntry));
           setErrorMessage("");
@@ -191,11 +196,11 @@ export function OwnerHomeScreen({
       setErrorMessage("Enter a valid date in YYYY-MM-DD format.");
       return;
     }
-    if (externalEntries) {
+    if (externalEntries && !previewMode) {
       setErrorMessage("Entries cannot be saved from this read-only preview.");
       return;
     }
-    if (!requestToken) {
+    if (!requestToken && !previewMode) {
       setErrorMessage("Sign in to your owner account before saving entries.");
       return;
     }
@@ -222,8 +227,31 @@ export function OwnerHomeScreen({
     setErrorMessage("");
     setStatusMessage("");
 
+    if (previewMode) {
+      const localEntry: DiaryEntryItem = {
+        id: `preview-${Date.now()}`,
+        date: entryDate,
+        time: getLocalTime(),
+        category: selectedJournal,
+        source: "TEXT",
+        excerpt: trimmedText,
+        aiTone: selectedFeeling === "Peace" ? "moon" : "sparkle",
+        tags: normalizeEntryTags(entryTags),
+        isDraft: true,
+      };
+      setEntries((currentEntries) => [...currentEntries, localEntry]);
+      setEntryText("");
+      setEntryTags("");
+      setEntryDate(getLocalDate());
+      setSelectedCategory("All");
+      setActiveTab("Diary");
+      setStatusMessage("Saved in this local preview only.");
+      setIsSaving(false);
+      return;
+    }
+
     try {
-      const savedEntry = mapBackendEntry(await createEntry(requestToken, input));
+      const savedEntry = mapBackendEntry(await createEntry(requestToken!, input));
 
       setEntries((currentEntries) => [...currentEntries, savedEntry]);
       setEntryText("");
@@ -245,6 +273,13 @@ export function OwnerHomeScreen({
   };
 
   const handlePublishEntry = async () => {
+    if (previewMode && selectedEntry) {
+      const published = { ...selectedEntry, isDraft: false };
+      setEntries((current) => current.map((entry) => entry.id === published.id ? published : entry));
+      setSelectedEntry(published);
+      setStatusMessage("Published in this local preview only.");
+      return;
+    }
     if (!requestToken || !selectedEntry || externalEntries || !selectedEntry.isDraft) return;
     setIsUpdatingEntry(true);
     setErrorMessage("");
@@ -278,9 +313,7 @@ export function OwnerHomeScreen({
           {/* Top Header */}
           <View style={styles.topBar}>
             <View style={[styles.brandGroup, isCompact && styles.compactBrandGroup]}>
-              <Text style={[styles.bookGlyph, isCompact && styles.compactBookGlyph]}>
-                📖
-              </Text>
+              <MaterialCommunityIcons name="book-open-page-variant-outline" size={isCompact ? 21 : 27} color={COLORS.inkBrown} />
               <Text style={[styles.brand, isCompact && styles.compactBrand]}>
                 Eternita
               </Text>
@@ -331,7 +364,7 @@ export function OwnerHomeScreen({
                 accessibilityLabel="Switch mode"
                 accessibilityRole="button"
               >
-                <Text style={styles.iconGlyph}>⇄</Text>
+                <MaterialCommunityIcons name="swap-horizontal" size={16} color={COLORS.inkBrown} />
               </Pressable>
 
               <Pressable
@@ -343,7 +376,7 @@ export function OwnerHomeScreen({
                 accessibilityLabel="Sign out"
                 accessibilityRole="button"
               >
-                <Text style={styles.iconGlyph}>⏻</Text>
+                <MaterialCommunityIcons name="power" size={15} color={COLORS.inkBrown} />
               </Pressable>
             </View>
           </View>
@@ -677,7 +710,7 @@ export function OwnerHomeScreen({
                   : `Entries : ${filteredEntries.length}`}
               </Text>
 
-              {!requestToken && !externalEntries ? (
+              {!requestToken && !externalEntries && !previewMode ? (
                 <Text style={styles.statusMessage}>
                   Connect an owner sign-in session to load and save your entries.
                 </Text>
@@ -751,6 +784,7 @@ export function OwnerHomeScreen({
               screen={activeTab}
               entries={activeData}
               idToken={requestToken}
+              onOpenRegister={onOpenRegister}
             />
           )}
         </ScrollView>
@@ -788,7 +822,7 @@ export function OwnerHomeScreen({
                 <View style={styles.modalActions}>
                   <Pressable
                     onPress={handlePublishEntry}
-                    disabled={isUpdatingEntry || !requestToken || Boolean(externalEntries)}
+                    disabled={isUpdatingEntry || (!requestToken && !previewMode) || (Boolean(externalEntries) && !previewMode)}
                     style={styles.modalButton}
                     accessibilityRole="button"
                   >
@@ -798,7 +832,7 @@ export function OwnerHomeScreen({
                   </Pressable>
                 </View>
               ) : null}
-              {!requestToken ? (
+              {!requestToken && !previewMode ? (
                 <Text style={styles.errorMessage}>
                   Add a Firebase ID token to enable entry changes.
                 </Text>
@@ -818,11 +852,7 @@ export function OwnerHomeScreen({
                 style={styles.tabItem}
                 accessibilityRole="button"
               >
-                <Text
-                  style={[styles.tabGlyph, isActive && styles.tabActiveColor]}
-                >
-                  {tab.glyph}
-                </Text>
+                <MaterialCommunityIcons name={({ Diary: "book-outline", Write: "pencil-outline", Ask: "star-four-points", Star: "brightness-5", Legacy: "timer-sand", Vault: "link-variant" } as const)[tab.key]} size={21} color={isActive ? COLORS.activeBrown : "#8C5B2B"} />
                 <Text
                   style={[styles.tabLabel, isActive && styles.tabActiveColor]}
                 >

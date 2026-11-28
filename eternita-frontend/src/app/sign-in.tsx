@@ -14,7 +14,10 @@ export default function SignInRoute() {
           email,
           password,
         );
-        await getCurrentProfile(await credential.user.getIdToken());
+        const profile = await getCurrentProfile(await credential.user.getIdToken());
+        if (profile.role !== "owner") {
+          throw new Error("This account is not registered as an owner.");
+        }
         router.replace("/owner");
       }}
       onRegister={() => router.push("/register")}

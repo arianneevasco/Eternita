@@ -15,7 +15,6 @@ export default function RegisterRoute() {
           password,
           displayName: displayName.trim(),
         });
-
         // The backend creates the Firebase Auth account and Firestore profile.
         // Sign in only after registration succeeds, then verify the authenticated
         // profile through the protected API before entering the owner area.

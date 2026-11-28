@@ -1,5 +1,11 @@
 node_modules/
 dist/
 .env
+.env*
 firebase/serviceAccountKey.json
 **/firebase/serviceAccountKey.json
+**/serviceAccountKey*.json
+**/credentials*.json
+*.pem
+*.p12
+*.key

@@ -73,15 +73,25 @@ export function createEntry(
 
 export function listEntries(
   idToken: string
-): Promise<{ entries: DiaryEntry[] }> {
-  return apiRequest<{ entries: DiaryEntry[] }>("/entries", { idToken });
+): Promise<DiaryEntry[]> {
+  return apiRequest<DiaryEntry[] | { entries: DiaryEntry[] }>("/entries", {
+    idToken,
+  }).then((result) => Array.isArray(result) ? result : result.entries);
+}
+
+export interface PublishEntryResult {
+  entryId: string;
+  previousHash: string;
+  entryHash: string;
+  sequence: number;
+  publishedAt: BackendTimestamp;
 }
 
 export function publishEntry(
   idToken: string,
   entryId: string
-): Promise<DiaryEntry> {
-  return apiRequest<DiaryEntry>(
+): Promise<PublishEntryResult> {
+  return apiRequest<PublishEntryResult>(
     `/entries/${encodeURIComponent(entryId)}/publish`,
     { method: "POST", idToken },
   );

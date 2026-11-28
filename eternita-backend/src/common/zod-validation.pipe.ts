@@ -13,7 +13,7 @@ export class ZodValidationPipe implements PipeTransform {
   ) {}
 
   transform(value: unknown, metadata: ArgumentMetadata) {
-    if (metadata.type !== "body") {
+    if (metadata.type !== "body" && metadata.type !== "query") {
       return value;
     }
 
@@ -22,7 +22,12 @@ export class ZodValidationPipe implements PipeTransform {
     if (!result.success) {
       throw new BadRequestException({
         message: "Invalid request data",
-        errors: result.error.flatten().fieldErrors,
+        errors: {
+          ...result.error.flatten().fieldErrors,
+          ...(result.error.flatten().formErrors.length
+            ? { _request: result.error.flatten().formErrors }
+            : {}),
+        },
       });
     }
 
