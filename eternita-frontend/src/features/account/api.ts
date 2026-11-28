@@ -18,17 +18,16 @@ export interface UserProfile {
 }
 
 export interface RegisterOwnerInput {
-  name: string;
-  handle: string;
+  email: string;
+  password: string;
+  displayName: string;
 }
 
 export function registerOwner(
-  idToken: string,
   input: RegisterOwnerInput
 ): Promise<UserProfile> {
   return apiRequest<UserProfile>("/auth/register-owner", {
     method: "POST",
-    idToken,
     body: input,
   });
 }
