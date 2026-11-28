@@ -8,15 +8,15 @@ Inspection of the current NestJS source, controllers, services, DTOs, guards, Fi
 |---:|---|---|---|
 | 1 | Owner registration and profile | PARTIALLY IMPLEMENTED | `POST /auth/register-owner` provisions Firebase Auth and `users/{uid}`; `GET /auth/me` reads profile. No profile update route. |
 | 2 | Firebase Authentication and ID-token verification | IMPLEMENTED | `AuthGuard` verifies Firebase bearer ID tokens through Firebase Admin and attaches verified UID. |
-| 3 | Owner invitations | IMPLEMENTED | `POST /invites` creates seven-day invite. Inline body type only; no runtime validation. |
+| 3 | Owner invitations | IMPLEMENTED | `POST /invites` creates seven-day invite; strict Zod request validation is applied. |
 | 4 | Beneficiary joining | IMPLEMENTED | `POST /auth/join` consumes pending invite transactionally and creates associated profile. The backend role is currently `recipient`. |
 | 5 | Trusted people list | PARTIALLY IMPLEMENTED | `GET /people` lists profiles with `ownerUid` equal to authenticated UID. No update/removal management. |
 | 6 | Diary entry creation | IMPLEMENTED | `POST /entries`, Zod validation, defaults, Firestore transaction. |
 | 7 | Diary entry listing | IMPLEMENTED | `GET /entries`, authenticated owner; non-hidden newest-first. |
-| 8 | Single entry retrieval | IMPLEMENTED | `GET /entries/:entryId`, owner or gated cross-user access. Query validation for `access` is missing. |
+| 8 | Single entry retrieval | IMPLEMENTED | `GET /entries/:entryId`, owner or gated cross-user access. `access` accepts `existence`, `summary`, or `full` (default `full`) and invalid values return 400. |
 | 9 | Entry editing | IMPLEMENTED | `PATCH /entries/:entryId`; owner only; published entries rejected; draft snapshot written. |
 | 10 | Entry publishing | IMPLEMENTED | `POST /entries/:entryId/publish`; transaction assigns sequence and hash metadata. |
-| 11 | Entry favorites | IMPLEMENTED | `PATCH /entries/:entryId/favorite`; inline request type lacks runtime validation. |
+| 11 | Entry favorites | IMPLEMENTED | `PATCH /entries/:entryId/favorite`; strict Zod validation requires a boolean `isFavorite`. |
 | 12 | Entry deletion | PARTIALLY IMPLEMENTED | `DELETE /entries/:entryId` marks `isHidden: true`; it does not physically delete. |
 | 13 | Entry version history | PARTIALLY IMPLEMENTED | Draft edits write snapshots to versions subcollection; `GET /entries/:entryId/versions`. No published-entry edit history because published edits are prohibited. |
 | 14 | Entry drafts | IMPLEMENTED | `isDraft` default true; publishing is separate. |
@@ -58,7 +58,7 @@ No feature was labeled REMOVED FROM SCOPE: repository evidence did not establish
 
 ## Implemented and partial API contracts
 
-Unless noted, protected routes require `Authorization: Bearer <Firebase ID token>`. JSON dates/times are strings on input; Firestore `Date`/Timestamp response values serialize through the server JSON serializer. Nest default error responses are `{ "statusCode": n, "message": "...", "error": "..." }`; validation or service-specific results may differ as noted. Exact error JSON for all backend and provider failures is not fully normalized.
+Unless noted, protected routes require `Authorization: Bearer <Firebase ID token>`. JSON dates/times are strings on input; Firestore `Date`/Timestamp response values serialize through the server JSON serializer. HTTP exceptions are normalized to `{statusCode,code,message}`; validation errors also include `errors` keyed by field. Some service-level outcomes intentionally remain HTTP-success result bodies as noted.
 
 ### Account and people
 
@@ -66,8 +66,8 @@ Unless noted, protected routes require `Authorization: Bearer <Firebase ID token
 |---|---|---|---|
 | `POST /auth/register-owner` (public) | `{email,password,displayName}`. Email valid, max 254; password 6–128; displayName trimmed, nonempty, max 100. | HTTP 201 `{uid,role:"owner",name,handle}`. | 400 invalid email/password or validation; 409 duplicate email. Firebase auth + `users/{uid}` and `users/{uid}/activity/{id}`. `people-integration.test.ts`. |
 | `GET /auth/me` | No body. Auth required. | HTTP 200 `{uid,role,name,handle,settings}`. | Missing profile currently returns HTTP-success `{error:"Register an Alaala profile first"}`. `users/{uid}`. People integration. |
-| `POST /invites` | `{handle,name}`; AuthGuard. No runtime field validation. | HTTP 201 `{inviteId,code,handle,name,expiresAt}`. Invite expires in seven days. | Invalid/missing fields are not consistently normalized. `invites/{inviteId}`. People integration; rules tests. |
-| `POST /auth/join` | `{code,name}`; AuthGuard. No runtime DTO validation. | HTTP 201 `{uid,role:"recipient",ownerUid,name,handle}`. | Invalid/used/expired invite and existing profile return inline `{error:"..."}` (often HTTP 200); creates `users/{uid}`, updates invite. People integration; rules tests. |
+| `POST /invites` | Strict `{handle,name}`; both trimmed non-empty strings, max 100; AuthGuard. | HTTP 201 `{inviteId,code,handle,name,expiresAt}`. Invite expires in seven days. | Invalid fields return normalized 400 validation response. `invites/{inviteId}`. People integration; rules tests. |
+| `POST /auth/join` | Strict `{code,name}`; code trimmed/uppercased, 6–64 uppercase letters/digits/hyphens; name trimmed non-empty max 100; AuthGuard. | HTTP 201 `{uid,role:"recipient",ownerUid,name,handle}`. | Invalid fields return 400. Invalid/used/expired invite and existing profile continue to return inline `{error:"..."}` business results; creates `users/{uid}`, updates invite. People integration; rules tests. |
 | `GET /people` | No body. AuthGuard. | HTTP 200 `{people:[{uid,role,ownerUid,name,handle}]}`. | Firestore query on `users` where `ownerUid` matches caller. People integration. |
 
 ### Diary
@@ -92,10 +92,10 @@ Create schema (`POST /entries`) and edit schema (`PATCH /entries/:entryId`) use 
 |---|---|---|---|
 | `POST /entries` | Required create schema above. AuthGuard. | HTTP 201 entry document: `entryId,ownerUid,title,originalText,journal,entryDate,entryTime,releaseDate?,mood,people,tags,isFavorite,isDraft,writingMode,finalText,isHidden,currentVersion,previousHash,entryHash,createdAt,updatedAt`; published create also `publishedAt,sequence`. | Zod 400 `{message:"Invalid request data",errors:{field:[messages]}}`; auth 401. `users/{uid}/entries/{entryId}`; published creates update user `lastSeq,lastHash`. Entry/hash tests. |
 | `GET /entries` | No body/query. AuthGuard. | HTTP 200 array of `{entryId,...storedFields}`, own visible entries ordered `createdAt` descending. | Auth 401. `users/{uid}/entries`. Entry tests. |
-| `GET /entries/:entryId?ownerUid=&access=` | Optional `ownerUid`; `access` defaults `full`, intended values `existence|summary|full`, not runtime validated. | Owner: stored document `{entryId,...fields}`. Cross-user: existence `{accessGranted:true,exists:true}`; summary `{accessGranted:true,summary}`; full `{accessGranted:true,title,content,createdAt}`. | Not-found/denial may return HTTP-success `{accessGranted:false,message}`; guarded by legacy state, hidden/release checks, policy. Entries path. Policy access integration tests. |
+| `GET /entries/:entryId?ownerUid=&access=` | Optional `ownerUid`; `access` defaults `full` and accepts `existence|summary|full`; invalid values return normalized 400. | Owner: stored document `{entryId,...fields}`. Cross-user: existence `{accessGranted:true,exists:true}`; summary `{accessGranted:true,summary}`; full `{accessGranted:true,title,content,createdAt}`. | Privacy-safe denial may return HTTP-success `{accessGranted:false,message}`; guarded by legacy state, hidden/release checks, policy. Entries path. Policy access integration tests. |
 | `PATCH /entries/:entryId` | Any subset of create fields (Zod partial). AuthGuard. | HTTP 200 `{entryId,currentVersion,updatedAt}`. | 400 schema; 403 non-owner; 404 missing; 409 published entry `{message:"Published entries cannot be edited because that would invalidate the hash chain.",error:"Conflict",statusCode:409}`. Creates snapshot in `users/{uid}/versions/{entryId}/versions/{versionId}`. Entry/hash tests. |
 | `POST /entries/:entryId/publish` | No body. AuthGuard. | HTTP 201 `{entryId,previousHash,entryHash,sequence,publishedAt}`. | 403 non-owner; 404 draft not found. Entry path and user sequence/hash. Hash chain integration. |
-| `PATCH /entries/:entryId/favorite` | `{isFavorite:boolean}` inline type; no runtime validator. | HTTP 200 `{entryId,isFavorite}`. | 403 non-owner, 404 missing; malformed values not consistently validated. Entry path. Entry tests. |
+| `PATCH /entries/:entryId/favorite` | Strict `{isFavorite:boolean}`; AuthGuard. | HTTP 200 `{entryId,isFavorite}`. | Invalid body 400; non-owner 403; missing 404. Entry path. Entry tests. |
 | `DELETE /entries/:entryId` | No body. AuthGuard. | HTTP 200 `{entryId,isHidden:true}`. | 403 non-owner, 404 missing. Soft hide in entry path. Entry tests. |
 | `GET /entries/:entryId/versions` | No body. AuthGuard. | HTTP 200 array of `{versionId,entryId,version,content,previousHash,entryHash,createdAt}`. | Uses caller UID path, so owner-scoped. Nested versions path above. Hash/version tests. |
 
@@ -106,14 +106,14 @@ Create schema (`POST /entries`) and edit schema (`PATCH /entries/:entryId`) use 
 | `POST /policies` | `{policyText}` trimmed, length 1–100000, Zod strict schema. | HTTP 201 `{policyId,ownerUid,policyText,compiledFacts,version:1,status:"active"}`. | Syntax errors from parser; 409 when owner deceased. Supersedes active policies transactionally. `users/{uid}/policies/{policyId}`; policy/parser/compiler/evaluator tests. |
 | `GET /policies/active` | No body. | HTTP 200 stored policy object with `policyId` and document fields, or `null`. | AuthGuard; path `users/{uid}/policies`. Policy tests. |
 | `POST /policies/:policyId/freeze` | No body. | HTTP 201 `{policyId,status:"frozen"}`. | 404 `{message:"Policy not found",error:"Not Found",statusCode:404}`. Policy path. Legacy lifecycle tests. |
-| `POST /legacy/request` | `{ownerUid}` inline body, no DTO validation. | HTTP 201 safe request fields: `requestId,status,decision,decisionAt,activatedAt,revokedAt,createdAt,updatedAt`. | Self-request 400; duplicate 409. `users/{ownerUid}/legacyRequests/{requestId}`. Legacy integration/lifecycle/auth tests. |
+| `POST /legacy/request` | Strict `{ownerUid}`; trimmed non-empty string, max 128. | HTTP 201 safe request fields: `requestId,status,decision,decisionAt,activatedAt,revokedAt,createdAt,updatedAt`. | Invalid body 400; self-request 400; duplicate 409. `users/{ownerUid}/legacyRequests/{requestId}`. Legacy integration/lifecycle/auth tests. |
 | `GET /legacy/status/:ownerUid` | No body. | HTTP 200 safe request fields above or `{status:"not_requested"}`. | AuthGuard. Same path. Legacy tests. |
 | `POST /legacy/requests/:requestId/approve` | No body. | HTTP 201 safe request result; status `approved`. | 403 wrong actor; 404 missing; 409 invalid transition. Same request path. Legacy tests. |
 | `POST /legacy/requests/:requestId/deny` | No body. | HTTP 201 safe result; status `denied`. | Same error envelope/codes as approve. Legacy tests. |
 | `POST /legacy/requests/:requestId/activate` | No body. | HTTP 201 safe result; status `active`. | Requires approved state; same transition errors. Legacy tests. |
 | `POST /legacy/requests/:requestId/revoke` | No body. | HTTP 201 safe result; status `revoked`. | Requires approved/active/released state; same transition errors. Legacy tests. |
 | `POST /legacy/requests/:requestId/cancel` | No body. | HTTP 201 safe result; status `cancelled`. | Requester-only, pending-only; same transition errors. Legacy tests. |
-| `POST /legacy/death-reports` | `{ownerUid}` inline body, AuthGuard. | HTTP 201 service result with report/status fields. Exact fields are determined by `DeathVerificationService`; report is stored with delayed confirmation state. | Business validation/eligibility errors from service; response contract is not represented by a DTO. `users/{ownerUid}/deathReports/{reportId}`, policy and request transaction updates, activity event. Death-report integration tests. |
+| `POST /legacy/death-reports` | Strict `{ownerUid}`; trimmed non-empty string, max 128; AuthGuard. | HTTP 201 service result with report/status fields. Exact fields are determined by `DeathVerificationService`; report is stored with delayed confirmation state. | Invalid body 400; business eligibility/lifecycle behavior unchanged. `users/{ownerUid}/deathReports/{reportId}`, policy and request transaction updates, activity event. Death-report integration tests. |
 
 ### AI, health, auth, and non-HTTP paths
 
@@ -127,14 +127,14 @@ Paths found in code: `users/{uid}`, `users/{uid}/activity/{id}`, `users/{uid}/en
 
 ## Gaps, scope guidance, and next tasks
 
-Frontend blockers: CORS is not enabled; invite/join/favorite/legacy/death-report inline body types lack consistent runtime validation; access query enum is unvalidated; business errors sometimes return HTTP success with error fields; no production URL or Firebase Web config exists in repository; current API has no profile update, journal management, media attachment, summary/analytics, notification delivery, or speech transcription.
+Frontend blockers: actual Expo team origin has not been provided in this repository; CORS allows exact localhost Expo defaults in development and requires an explicit production allowlist. Business errors sometimes remain HTTP-success result bodies with error fields. No production URL or Firebase Web config exists in the repository. The API has no profile update, journal management, media attachment, summary/analytics, notification delivery, or speech transcription.
 
 Do not build future messages, bucket-list workflow, memory album, constellation data, or emotion-symbol APIs until product confirms they are current scope. Keep cross-user access behind backend policy and legacy checks. No business logic, authorization, rules, lifecycle, or tests were altered for this report.
 
 Recommended next three backend tasks:
 
-1. Add stable frontend contracts and runtime validation on the existing inline-body routes, preserving current decisions and lifecycle behavior.
-2. Configure explicit CORS origins for Expo web and deployment, after obtaining the actual origin values.
+1. Confirm the frontend team's actual Expo web origin and set it in `CORS_ALLOWED_ORIGINS` for each environment.
+2. Publish deployment-specific API and Firebase Web configuration to the frontend team through the approved project channel.
 3. Confirm product scope, then implement one current-scope feature vertical slice (for example, profile settings/reminders or mood analytics) with route/DTO/tests.
 
 ## Test outcomes

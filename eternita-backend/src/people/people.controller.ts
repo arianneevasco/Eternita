@@ -1,19 +1,9 @@
-import {Body,Controller,
-Get,Param,Post,Req,UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
 import { getDb } from "../config/firebase";
 import { AuthGuard } from "../auth/auth.guard";
-import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
-
-interface CreateInviteDto {
-  handle: string;
-  name: string;
-}
-
-interface JoinDto {
-  code: string;
-  name: string;
-}
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { createInviteSchema, CreateInviteDto, joinInviteSchema, JoinInviteDto } from "./people.dto";
+import { ApiBadRequestResponse, ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags, ApiUnauthorizedResponse } from "@nestjs/swagger";
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -22,11 +12,13 @@ interface JoinDto {
 export class PeopleController {
   @Post("invites")
   @ApiOperation({ summary: "Create a beneficiary invitation" })
-  @ApiBody({ schema: { type: "object", required: ["handle", "name"], properties: { handle: { type: "string" }, name: { type: "string" } } } })
-  @ApiCreatedResponse({ description: "Invitation code and expiration" })
+  @ApiBody({ schema: { type: "object", additionalProperties: false, required: ["handle", "name"], properties: { handle: { type: "string", minLength: 1, maxLength: 100, example: "maria_santos" }, name: { type: "string", minLength: 1, maxLength: 100, example: "Maria Santos" } } } })
+  @ApiCreatedResponse({ schema: { example: { inviteId: "invite-123", code: "A1B2C3", handle: "maria_santos", name: "Maria Santos", expiresAt: "2026-12-05T10:30:00.000Z" } } })
+  @ApiBadRequestResponse({ description: "Invalid request data", schema: { example: { statusCode: 400, code: "VALIDATION_ERROR", message: "Invalid request data", errors: { handle: ["Too small: expected string to have >=1 characters"] } } } })
+  @ApiUnauthorizedResponse({ description: "Missing, invalid, or expired Firebase ID token" })
   async createInvite(
     @Req() request: any,
-    @Body() body: CreateInviteDto
+    @Body(new ZodValidationPipe(createInviteSchema)) body: CreateInviteDto
   ) {
     const db = getDb();
     const ownerUid = request.uid;
@@ -63,10 +55,13 @@ export class PeopleController {
 
   @Post("auth/join")
   @ApiOperation({ summary: "Join using an invitation code" })
-  @ApiBody({ schema: { type: "object", required: ["code", "name"], properties: { code: { type: "string" }, name: { type: "string" } } } })
+  @ApiBody({ schema: { type: "object", additionalProperties: false, required: ["code", "name"], properties: { code: { type: "string", pattern: "^[A-Z0-9-]{6,64}$", example: "A1B2C3" }, name: { type: "string", minLength: 1, maxLength: 100, example: "Maria Santos" } } } })
+  @ApiCreatedResponse({ schema: { example: { uid: "firebase-uid", role: "recipient", ownerUid: "owner-uid", name: "Maria Santos", handle: "maria_santos" } } })
+  @ApiBadRequestResponse({ description: "Invalid request data" })
+  @ApiUnauthorizedResponse({ description: "Missing, invalid, or expired Firebase ID token" })
   async join(
     @Req() request: any,
-    @Body() body: JoinDto
+    @Body(new ZodValidationPipe(joinInviteSchema)) body: JoinInviteDto
   ) {
     const db = getDb();
     const uid = request.uid;
@@ -140,6 +135,8 @@ export class PeopleController {
 
   @Get("people")
   @ApiOperation({ summary: "List trusted people associated with the owner" })
+  @ApiResponse({ status: 200, schema: { example: { people: [{ uid: "recipient-uid", role: "recipient", ownerUid: "owner-uid", name: "Maria Santos", handle: "maria_santos" }] } } })
+  @ApiUnauthorizedResponse({ description: "Missing, invalid, or expired Firebase ID token" })
   async getPeople(@Req() request: any) {
     const db = getDb();
     const ownerUid = request.uid;
