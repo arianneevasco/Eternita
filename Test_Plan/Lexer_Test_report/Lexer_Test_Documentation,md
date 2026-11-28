@@ -1,0 +1,120 @@
+# QA TEST REPORT – LEXER TESTING
+
+**Task:** 2.12 – Write Lexer Tests  
+**Tester:** Lyza Gwen B. Guatno  
+**Date:** November 28, 2026  
+**Operating System:** Windows (PowerShell)  
+**Node.js Version:** `v24.14.0`  
+**npm Version:** `11.9.0`  
+
+**Implementation Branch Tested:** `backend`  
+**QA Documentation Branch:** `test-plan`
+
+---
+
+## 1. Testing Overview
+
+This activity focused on testing the Lexer component of the Eternita backend. The purpose was to verify whether the lexer correctly reads policy text and converts it into tokens with the appropriate type, value, line, and column information.
+
+The testing was performed using the existing lexer test file without modifying the backend implementation.
+
+## 2. Testing Environment
+
+The following tools and environment were used:
+
+- Visual Studio Code
+- Windows PowerShell
+- Node.js
+- npm
+- Jest testing framework
+- TypeScript
+
+**Test File:** `test/policy/lexer.test.ts`  
+**Implementation File:** `src/policy/lexer.ts`
+
+## 3. Lexer Test Cases
+
+The existing lexer test file contains five test cases.
+
+| No. | Test Case | Expected Result | Status |
+|---|---|---|---|
+| 1 | Tokenizes the handout sample policy correctly | Policy text is converted into the expected tokens | PASS |
+| 2 | Stores type, value, line, and column for each token | Each token contains the correct information | PASS |
+| 3 | Recognizes keywords, names, dates, and numbers | The lexer identifies the expected token types | PASS |
+| 4 | Raises an error for an unknown character | A `PolicySyntaxError` is thrown | PASS |
+| 5 | Raises an error for an unterminated string | A `PolicySyntaxError` is thrown | PASS |
+
+## 4. Testing Procedure
+
+The following steps were performed during testing:
+
+1. Opened the Eternita repository using Visual Studio Code.
+2. Switched to the `backend` branch to test the implementation.
+3. Navigated to the `eternita-backend` directory.
+4. Located the existing lexer test file at `test/policy/lexer.test.ts`.
+5. Executed the lexer test command using PowerShell:
+
+   ```powershell
+   npm test -- --runInBand test/policy/lexer.test.ts
+   ```
+
+6. Checked the test results to verify whether all lexer test cases passed.
+7. Executed the complete backend test suite:
+
+   ```powershell
+   npm test -- --runInBand
+   ```
+
+8. Recorded the results and saved the screenshots for QA documentation.
+
+## 5. Actual Test Results
+
+### 5.1 Lexer Test Results
+
+The lexer test suite completed successfully.
+
+- Test Suites: 1 passed, 1 total
+- Tests: 5 passed, 5 total
+- Snapshots: 0 total
+
+**Result:** PASS
+
+### 5.2 Full Backend Test Results
+
+The complete backend test suite was also executed to check whether the existing backend tests passed.
+
+- Test Suites: 12 passed, 12 total
+- Tests: 64 passed, 64 total
+- Snapshots: 0 total
+
+**Result:** PASS
+
+## 6. Evidence and Screenshots
+
+The following screenshots under the Lexer_Test_Report.md/ Evidence will serve as evidence of the executed tests and their results.
+
+### 6.1 Lexer Test Results
+
+This screenshot shows the result of executing the lexer test file. All five lexer test cases passed successfully.
+
+![Lexer Test Results](Test_Plan/Lexer_Test_Report/Evidence/Lexer_Test_Result.png)
+
+### 6.2 Full Backend Test Results
+
+This screenshot shows the result of executing the complete backend test suite. All twelve test suites and sixty-four tests passed.
+
+![Full Backend Test Results](est_Plan/Lexer_Test_Report/Evidence/Full_Backend_result.png)
+
+## 7. Defects and Observations
+
+During the execution of the lexer tests, all five existing test cases passed without errors. The complete backend test suite also finished successfully.
+
+No test failures were observed during this testing activity. No changes were made to the backend implementation.
+
+## 8. QA Summary and Conclusion
+
+The Lexer component passed all five existing test cases. The tests verified the tokenization of policy text, token information, recognition of token types, and handling of invalid characters and unterminated strings.
+
+The complete backend test suite also passed, with twelve test suites and sixty-four tests completed successfully.
+
+Based on the test results, the lexer implementation passed the executed tests. The results and screenshots were recorded as evidence for Task 2.12 – Write Lexer Tests.
