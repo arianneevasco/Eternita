@@ -28,7 +28,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=<web-app-id>
 EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
 ```
 
-Enable the intended Firebase Authentication provider in the project. Sign up or sign in with the Firebase client SDK, then retrieve an ID token:
+Enable the intended Firebase Authentication provider in the project. **For a new owner account, do not call Firebase client `createUserWithEmailAndPassword` first.** Send the registration request below to `POST /auth/register-owner`; the backend creates both the Firebase Auth account and Firestore owner profile. After it returns 201, sign in through Firebase client Auth and retrieve an ID token. For an existing account, use Firebase client sign-in directly:
 
 ```ts
 const idToken = await auth.currentUser?.getIdToken();
@@ -42,7 +42,7 @@ Authorization: Bearer <Firebase ID token>
 Content-Type: application/json
 ```
 
-`POST /auth/register-owner` creates the Firebase Auth account itself and is public. For normal sign-in, Firebase Auth is the source of the token; do not send a UID as credentials. The backend verifies the token with Firebase Admin and derives the caller UID from the verified token.
+`POST /auth/register-owner` creates the Firebase Auth account and owner Firestore profile itself and is public. Its request body contains only `email`, `password`, and `displayName`; validate any password confirmation field in the UI and do not include it in the API body. Do not also create the Auth user from the client before calling this endpoint. After successful registration, sign in with Firebase client Auth to obtain the token. For normal sign-in, Firebase Auth is the source of the token; do not send a UID as authentication. The backend verifies the token with Firebase Admin and derives the caller UID from the verified token.
 
 ## Routes
 
