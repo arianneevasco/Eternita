@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PolicyStorageService } from "./policy-storage.service";
 import { evaluatePolicy } from "./prolog-evaluator";
 import { compilePolicy } from "./compiler";
+import { evaluateLetterRelease } from "./letter-release";
 import { isReleaseDateReached } from "../diary/release-date";
 
 export type AccessLevel = "existence" | "summary" | "full";
@@ -14,6 +15,7 @@ export interface AccessRequest {
   releaseDate?: string;
   entry?: {
     entryId: string;
+    title?: string;
     people?: string[];
     tags?: string[];
   };
@@ -63,17 +65,36 @@ export class PolicyEvaluationService {
       const identityMap = typeof storedPolicy.policyText === "string"
         ? await this.getIdentityMap(request.ownerUid, storedPolicy.policyText)
         : {};
-      const facts = request.entry && typeof storedPolicy.policyText === "string"
-        ? compilePolicy(storedPolicy.policyText, [request.entry], identityMap).facts.join("\n")
-        : (storedPolicy.compiledFacts ?? []).join("\n");
+      const compiled = request.entry && typeof storedPolicy.policyText === "string"
+        ? compilePolicy(storedPolicy.policyText, [request.entry], identityMap)
+        : undefined;
+      const facts = compiled?.facts ?? (storedPolicy.compiledFacts ?? []);
 
       const atom = (value: string) =>
         /^[a-z][a-zA-Z0-9_]*$/.test(value)
           ? value
           : `'${value.replace(/'/g, "''")}'`;
 
+      // A scheduled letter is private to its declared recipient until its
+      // release date. On/after that UTC calendar date, the release acts as a
+      // full-level grant; ordinary policy denies still override that grant.
+      if (compiled) {
+        const releaseDecision = evaluateLetterRelease(
+          compiled.releases,
+          request.entry?.title,
+          request.requesterUid,
+          identityMap,
+        );
+        if (releaseDecision.kind === "denied") {
+          return { allowed: false, reason: releaseDecision.reason };
+        }
+        if (releaseDecision.kind === "released") {
+          facts.push(`grant(${atom(request.requesterUid)},${atom(request.entryId)},full).`);
+        }
+      }
+
       const result = await evaluatePolicy({
-        facts,
+        facts: facts.join("\n"),
         query: `access_allowed(${atom(request.requesterUid)}, ${atom(request.entryId)}, ${request.requestedAccess}).`,
       });
 

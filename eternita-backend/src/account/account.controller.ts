@@ -8,7 +8,6 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { getAuth } from "firebase-admin/auth";
 import { getDb } from "../config/firebase";
 import { initializeFirebase } from "../config/firebase";
 import { AuthGuard } from "../auth/auth.guard";
@@ -19,6 +18,7 @@ export class AccountController {
   @Post("register-owner")
   async registerOwner(@Body() body: RegisterOwnerDto) {
     initializeFirebase();
+    const { getAuth } = await import("firebase-admin/auth");
     const auth = getAuth();
     let user: Awaited<ReturnType<typeof auth.createUser>>;
 

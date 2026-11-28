@@ -135,6 +135,11 @@ jest.setTimeout(30_000);
     expect(grants.docs.find((doc) => doc.data().requesterUid === beneficiary)?.data().status).toBe("released");
     expect(grants.docs.find((doc) => doc.data().requesterUid === denied)?.data().status).toBe("denied");
     expect(grants.docs.find((doc) => doc.data().requesterUid === pending)?.data().status).toBe("pending");
+
+    await request(app.getHttpServer()).post("/policies")
+      .set("x-test-uid", owner)
+      .send({ policyText: "protocol recipient:\n  may read full of entries tagged family" })
+      .expect(409);
   });
 
   it("uses the released grant and frozen policy for diary and AI access", async () => {

@@ -1,4 +1,4 @@
-import { compilePolicy } from "../src/policy/compiler";
+import { compilePolicy, getLetterReleaseId } from "../src/policy/compiler";
 import { expect, test } from "@jest/globals";
 
 const policy = `
@@ -39,6 +39,14 @@ test("compiles permissions and preserves deny rules", () => {
   expect(result.defaultMode).toBe("verbatim");
   expect(result.custodyDeclarations).toEqual([
     { to: "juan" },
+  ]);
+  expect(result.releases).toEqual([
+    {
+      id: getLetterReleaseId("To my daughter"),
+      to: "maria",
+      title: "To my daughter",
+      date: "2040-05-01",
+    },
   ]);
 });
 

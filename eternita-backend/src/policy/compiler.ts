@@ -42,7 +42,7 @@ function checkedName(
   return value;
 }
 
-function letterId(title: string): string {
+export function getLetterReleaseId(title: string): string {
   const normalized = title.trim();
 
   if (!normalized) {
@@ -110,7 +110,7 @@ export function compilePolicy(
       }
 
       if (statement.type === "release") {
-        const id = letterId(statement.title);
+        const id = getLetterReleaseId(statement.title);
         const key = `${id}:${statement.to}`;
 
         if (releaseKeys.has(key)) {

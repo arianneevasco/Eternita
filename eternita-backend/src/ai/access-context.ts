@@ -66,6 +66,7 @@ export async function selectPermittedEntries(
             releaseDate: entry.releaseDate,
             entry: {
               entryId: entry.entryId,
+              title: entry.title,
               people: entry.people,
               tags: entry.tags,
             },

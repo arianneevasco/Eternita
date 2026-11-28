@@ -398,6 +398,7 @@ export class DiaryService {
           releaseDate: entry.releaseDate,
           entry: {
             entryId,
+            title: entry.title,
             people: entry.people,
             tags: entry.tags,
           },

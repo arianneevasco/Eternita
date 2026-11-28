@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { getDb } from "../config/firebase";
 import { compilePolicy } from "./compiler";
 import { parsePolicy } from "./parser";
@@ -27,16 +27,7 @@ export class PolicyStorageService {
 
     const now = new Date();
 
-    const activePolicies = await policyReference.parent
-      .where("status", "==", "active")
-      .get();
-    const batch = db.batch();
-
-    for (const document of activePolicies.docs) {
-      batch.update(document.ref, { status: "superseded", updatedAt: now });
-    }
-
-    batch.set(policyReference, {
+    const policyData = {
       policyId: policyReference.id,
       ownerUid,
       policyText,
@@ -45,9 +36,26 @@ export class PolicyStorageService {
       version: 1,
       status: "active",
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+    };
+
+    // The death-trigger transaction updates this same owner document. Reading
+    // it here makes policy creation conflict/retry against death confirmation.
+    await db.runTransaction(async (transaction) => {
+      const ownerReference = db.collection("users").doc(ownerUid);
+      const ownerSnapshot = await transaction.get(ownerReference);
+      if (ownerSnapshot.data()?.deceased === true) {
+        throw new ConflictException("Policies cannot be changed after the death trigger.");
+      }
+
+      const activePolicies = await transaction.get(
+        policyReference.parent.where("status", "==", "active"),
+      );
+      for (const document of activePolicies.docs) {
+        transaction.update(document.ref, { status: "superseded", updatedAt: now });
+      }
+      transaction.create(policyReference, policyData);
     });
-    await batch.commit();
 
     return {
       policyId: policyReference.id,

@@ -30,6 +30,9 @@ export async function evaluatePolicy(
 
     try {
     const session = pl.create(1000);
+      // Policy semantics: absence of a grant denies access. Grants are
+      // hierarchical (full > summary > existence), and any matching deny at
+      // or above the requested level overrides an allow.
       const program = `${input.facts}
 deny(_, _, _) :- fail.
 access_level_rank(existence, 1).
