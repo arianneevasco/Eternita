@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Animated,
   Pressable,
   StyleSheet,
   Text,
@@ -10,53 +11,105 @@ import { EternitaButton } from "../components/EternitaButton";
 import { EternitaFrame } from "../components/EternitaFrame";
 
 type Props = {
-  username: string;
   onContinueOwner: () => void;
   onContinueAsker: () => void;
   onBack: () => void;
 };
 
 export function FacePreviewScreen({
-  username,
   onContinueOwner,
   onContinueAsker,
   onBack,
 }: Props) {
   const [scanPreviewComplete, setScanPreviewComplete] = useState(false);
-  const { width } = useWindowDimensions();
+  const [scanStarted, setScanStarted] = useState(false);
+  const [scanProgress] = useState(() => new Animated.Value(0));
+  const { height, width } = useWindowDimensions();
   const isDesktop = width >= 900;
+  const isCompact = !isDesktop && height < 760;
+
+  function startScanPreview() {
+    if (scanStarted) {
+      return;
+    }
+
+    setScanStarted(true);
+    Animated.timing(scanProgress, {
+      toValue: 1,
+      duration: 1600,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) {
+        setScanPreviewComplete(true);
+      }
+    });
+  }
 
   return (
     <EternitaFrame>
-      <View style={[styles.content, isDesktop && styles.desktopContent]}>
-        <View style={[styles.hero, isDesktop && styles.desktopHero]}>
-          <Text style={[styles.brand, isDesktop && styles.desktopBrand]}>
+      <View
+        style={[
+          styles.content,
+          isDesktop && styles.desktopContent,
+          isCompact && styles.compactContent,
+        ]}
+      >
+        <View
+          style={[
+            styles.hero,
+            isDesktop && styles.desktopHero,
+            isCompact && styles.compactHero,
+          ]}
+        >
+          <Text
+            style={[
+              styles.brand,
+              isDesktop && styles.desktopBrand,
+              isCompact && styles.compactBrand,
+            ]}
+          >
             Eternita
           </Text>
-          {username ? (
-            <Text style={styles.welcome}>Welcome, {username}!</Text>
-          ) : null}
-          <View style={styles.diaryTitle}>
-            <Text style={[styles.diaryTitleText, isDesktop && styles.desktopDiaryTitle]}>
+          <View
+            style={[
+              styles.diaryTitle,
+              isCompact && styles.compactDiaryTitle,
+            ]}
+          >
+            <Text
+              style={[
+                styles.diaryTitleText,
+                isDesktop && styles.desktopDiaryTitle,
+                isCompact && styles.compactDiaryTitleText,
+              ]}
+            >
               My Personal{"\n"}AI Diary
             </Text>
           </View>
         </View>
 
-        <View style={[styles.scanPanel, isDesktop && styles.desktopScanPanel]}>
+        <View
+          style={[
+            styles.scanPanel,
+            isDesktop && styles.desktopScanPanel,
+            isCompact && styles.compactScanPanel,
+          ]}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Start face scan preview"
-            onPress={() => setScanPreviewComplete(true)}
+            disabled={scanStarted}
+            onPress={startScanPreview}
             style={({ pressed }) => [
               styles.facePlaceholder,
               isDesktop && styles.desktopFacePlaceholder,
+              isCompact && styles.compactFacePlaceholder,
               pressed && styles.pressed,
             ]}
           >
             <View style={styles.faceInner} />
           </Pressable>
-          <Text style={styles.prompt}>
+          <Text style={[styles.prompt, isCompact && styles.compactPrompt]}>
             {scanPreviewComplete
               ? "Face scan preview complete"
               : "Tap the face to begin"}
@@ -65,14 +118,24 @@ export function FacePreviewScreen({
             {[0, 1, 2, 3].map((mark) => (
               <View
                 key={mark}
-                style={[
-                  styles.scanMark,
-                  scanPreviewComplete && styles.scanMarkComplete,
-                ]}
-              />
+                style={styles.scanMark}
+              >
+                <Animated.View
+                  style={[
+                    styles.scanMarkFill,
+                    {
+                      width: scanProgress.interpolate({
+                        inputRange: [mark / 4, (mark + 1) / 4],
+                        outputRange: ["0%", "100%"],
+                        extrapolate: "clamp",
+                      }),
+                    },
+                  ]}
+                />
+              </View>
             ))}
           </View>
-          <Text style={styles.demoNote}>
+          <Text style={[styles.demoNote, isCompact && styles.compactDemoNote]}>
             UI preview only. No camera or face data is used.
           </Text>
 
@@ -89,11 +152,13 @@ export function FacePreviewScreen({
               />
             </View>
           ) : null}
-          <EternitaButton
-            title="Back to Sign In"
-            onPress={onBack}
-            variant="secondary"
-          />
+          {!scanPreviewComplete ? (
+            <EternitaButton
+              title="Back to Sign In"
+              onPress={onBack}
+              variant="secondary"
+            />
+          ) : null}
         </View>
       </View>
     </EternitaFrame>
@@ -107,6 +172,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 14,
   },
+  compactContent: {
+    gap: 8,
+  },
   desktopContent: {
     maxWidth: 1120,
     alignSelf: "center",
@@ -119,6 +187,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 14,
   },
+  compactHero: {
+    gap: 8,
+  },
   desktopHero: {
     flex: 1,
     width: "auto",
@@ -129,24 +200,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 14,
   },
+  compactScanPanel: {
+    gap: 8,
+  },
   desktopScanPanel: {
     flex: 1,
     maxWidth: 520,
   },
   brand: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 58,
     textAlign: "center",
+  },
+  compactBrand: {
+    fontSize: 44,
   },
   desktopBrand: {
     fontSize: 80,
     textAlign: "left",
-  },
-  welcome: {
-    color: "#FFF7EA",
-    fontSize: 16,
-    fontStyle: "italic",
   },
   facePlaceholder: {
     width: 250,
@@ -158,6 +230,11 @@ const styles = StyleSheet.create({
     borderColor: "#B96B1D",
     borderRadius: 150,
     backgroundColor: "#6A687F",
+  },
+  compactFacePlaceholder: {
+    width: 184,
+    height: 220,
+    borderWidth: 6,
   },
   desktopFacePlaceholder: {
     width: 280,
@@ -178,6 +255,9 @@ const styles = StyleSheet.create({
     fontSize: 19,
     textAlign: "center",
   },
+  compactPrompt: {
+    fontSize: 15,
+  },
   scanMarks: {
     flexDirection: "row",
     gap: 8,
@@ -187,8 +267,11 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 4,
     backgroundColor: "#E8D4BD",
+    overflow: "hidden",
   },
-  scanMarkComplete: {
+  scanMarkFill: {
+    height: "100%",
+    borderRadius: 4,
     backgroundColor: "#6BE3C2",
   },
   diaryTitle: {
@@ -199,11 +282,18 @@ const styles = StyleSheet.create({
     borderColor: "#C17C38",
     paddingVertical: 8,
   },
+  compactDiaryTitle: {
+    paddingVertical: 4,
+  },
   diaryTitleText: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 36,
     textAlign: "center",
+  },
+  compactDiaryTitleText: {
+    fontSize: 25,
+    lineHeight: 30,
   },
   desktopDiaryTitle: {
     fontSize: 48,
@@ -213,6 +303,9 @@ const styles = StyleSheet.create({
     color: "#D8BE9E",
     fontSize: 12,
     textAlign: "center",
+  },
+  compactDemoNote: {
+    fontSize: 10,
   },
   actions: {
     width: "100%",

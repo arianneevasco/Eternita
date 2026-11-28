@@ -1,23 +1,23 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { SignInScreen } from "../screens/SignInScreen";
+import { getFirebaseAuth } from "../features/account/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { getCurrentProfile } from "../features/account/api";
 
 export default function SignInRoute() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ username?: string }>();
-  const username = typeof params.username === "string" ? params.username : "";
-
   return (
     <SignInScreen
-      username={username}
-      onSignIn={(enteredUsername) =>
-        router.push({
-          pathname: "/face-check",
-          params: { username: enteredUsername },
-        })
-      }
+      onSignIn={async (email, password) => {
+        const credential = await signInWithEmailAndPassword(
+          getFirebaseAuth(),
+          email,
+          password,
+        );
+        await getCurrentProfile(await credential.user.getIdToken());
+        router.replace("/owner");
+      }}
       onRegister={() => router.push("/register")}
-      onPreviewOwner={() => router.push("/owner")}
-      onPreviewAsker={() => router.push("/asker")}
     />
   );
 }

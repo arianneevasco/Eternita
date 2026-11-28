@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   Pressable,
@@ -12,35 +13,50 @@ import { EternitaFrame } from "../components/EternitaFrame";
 
 type Props = {
   username?: string;
-  onSignIn: (username: string) => void;
+  onSignIn: (email: string, password: string) => Promise<void>;
   onRegister: () => void;
-  onPreviewOwner: () => void;
-  onPreviewAsker: () => void;
 };
 
 export function SignInScreen({
   username: initialUsername = "",
   onSignIn,
   onRegister,
-  onPreviewOwner,
-  onPreviewAsker,
 }: Props) {
   const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
-  function submit() {
-    const cleanUsername = username.trim();
-    if (!cleanUsername || !password) {
-      setError("Enter your username and password to continue.");
+  async function submit() {
+    const cleanEmail = username.trim();
+    if (!cleanEmail || !password) {
+      setError("Enter your email and password to continue.");
       return;
     }
 
     setError("");
-    onSignIn(cleanUsername);
+    setIsSubmitting(true);
+    try {
+      await onSignIn(cleanEmail, password);
+    } catch (authError) {
+      const code = (authError as { code?: string })?.code;
+      setError(
+        code === "auth/invalid-credential" || code === "auth/wrong-password"
+          ? "Email or password is incorrect. Please try again."
+          : code === "auth/user-not-found"
+            ? "No account was found for that email."
+            : code === "auth/too-many-requests"
+              ? "Too many sign-in attempts. Please try again later."
+              : authError instanceof Error
+                ? authError.message
+                : "We could not sign you in. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -62,10 +78,12 @@ export function SignInScreen({
 
         <View style={[styles.form, isDesktop && styles.desktopForm]}>
           <TextInput
-            accessibilityLabel="Username"
-            autoCapitalize="words"
+            accessibilityLabel="Email"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
             onChangeText={setUsername}
-            placeholder="Username"
+            placeholder="Email"
             placeholderTextColor="#FFF1DD"
             style={styles.input}
             value={username}
@@ -84,11 +102,14 @@ export function SignInScreen({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              hitSlop={8}
               onPress={() => setShowPassword((visible) => !visible)}
             >
-              <Text style={styles.showLabel}>
-                {showPassword ? "Hide" : "Show"}
-              </Text>
+              <Feather
+                name={showPassword ? "eye-off" : "eye"}
+                size={20}
+                color="#FFF7EA"
+              />
             </Pressable>
           </View>
 
@@ -97,10 +118,11 @@ export function SignInScreen({
               {error}
             </Text>
           ) : null}
-          <EternitaButton title="Sign In" onPress={submit} />
-          <Text style={styles.demoNote}>
-            Frontend preview only. Credentials and face sign-in are not checked.
-          </Text>
+          <EternitaButton
+            title={isSubmitting ? "Signing in..." : "Sign In"}
+            onPress={submit}
+            disabled={isSubmitting}
+          />
 
           <Text style={styles.registerPrompt}>
             New to Eternita?{" "}
@@ -113,25 +135,6 @@ export function SignInScreen({
             </Text>
           </Text>
 
-          <View style={styles.preview}>
-            <Text style={styles.previewTitle}>Preview a home area</Text>
-            <View style={styles.previewButtons}>
-              <View style={styles.previewButton}>
-                <EternitaButton
-                  title="Owner"
-                  onPress={onPreviewOwner}
-                  variant="secondary"
-                />
-              </View>
-              <View style={styles.previewButton}>
-                <EternitaButton
-                  title="Asker"
-                  onPress={onPreviewAsker}
-                  variant="secondary"
-                />
-              </View>
-            </View>
-          </View>
         </View>
       </View>
     </EternitaFrame>
@@ -166,7 +169,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 54,
     textAlign: "center",
   },
@@ -176,7 +179,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 22,
     textAlign: "center",
   },
@@ -212,12 +215,6 @@ const styles = StyleSheet.create({
     color: "#FFF7EA",
     fontSize: 16,
   },
-  showLabel: {
-    color: "#FFF7EA",
-    fontSize: 13,
-    fontWeight: "600",
-    paddingLeft: 8,
-  },
   error: {
     color: "#FFD1C8",
     fontSize: 14,
@@ -231,9 +228,9 @@ const styles = StyleSheet.create({
   },
   legalNote: {
     color: "#D8BE9E",
-    fontFamily: "Georgia",
-    fontSize: 13,
-    lineHeight: 18,
+    fontFamily: "EternitaScript",
+    fontSize: 18,
+    lineHeight: 23,
     textAlign: "center",
   },
   desktopLegalNote: {
@@ -250,21 +247,5 @@ const styles = StyleSheet.create({
   link: {
     color: "#F4B86E",
     textDecorationLine: "underline",
-  },
-  preview: {
-    gap: 10,
-    marginTop: 4,
-  },
-  previewTitle: {
-    color: "#E6CFB2",
-    fontSize: 13,
-    textAlign: "center",
-  },
-  previewButtons: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  previewButton: {
-    flex: 1,
   },
 });

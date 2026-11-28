@@ -56,14 +56,13 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
 
-  if (options.body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  if (options.idToken) {
-    headers.Authorization = `Bearer ${options.idToken}`;
+  const idToken = options.idToken;
+  if (idToken) {
+    headers.Authorization = `Bearer ${idToken}`;
   }
 
   const response = await fetch(`${getApiBaseUrl()}${path}`, {

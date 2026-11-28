@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 58,
     textAlign: "center",
   },
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 20,
     textAlign: "center",
   },
@@ -117,10 +117,9 @@ const styles = StyleSheet.create({
   },
   disclaimer: {
     color: "#E6CFB2",
-    fontFamily: "Georgia",
-    fontSize: 13,
-    fontStyle: "italic",
-    lineHeight: 19,
+    fontFamily: "EternitaScript",
+    fontSize: 18,
+    lineHeight: 23,
     paddingHorizontal: 6,
   },
   signInPrompt: {

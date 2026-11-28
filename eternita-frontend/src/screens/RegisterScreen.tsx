@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   Pressable,
@@ -11,7 +12,7 @@ import { EternitaButton } from "../components/EternitaButton";
 import { EternitaFrame } from "../components/EternitaFrame";
 
 type Props = {
-  onCreateAccount: (username: string, email: string) => void;
+  onCreateAccount: (username: string, email: string, password: string) => Promise<void>;
   onBack: () => void;
 };
 
@@ -22,10 +23,12 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [error, setError] = useState("");
-  const { width } = useWindowDimensions();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { height, width } = useWindowDimensions();
   const isDesktop = width >= 900;
+  const isCompact = !isDesktop && height < 760;
 
-  function submit() {
+  async function submit() {
     const cleanUsername = username.trim();
     const cleanEmail = email.trim();
 
@@ -50,17 +53,51 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
     }
 
     setError("");
-    onCreateAccount(cleanUsername, cleanEmail);
+    setIsSubmitting(true);
+    try {
+      await onCreateAccount(cleanUsername, cleanEmail, password);
+    } catch (registerError) {
+      const code = (registerError as { code?: string })?.code;
+      setError(
+        code === "auth/email-already-in-use"
+          ? "An account already uses this email. Please sign in."
+          : registerError instanceof Error
+            ? registerError.message
+            : "We could not create your account. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <EternitaFrame>
-      <View style={[styles.content, isDesktop && styles.desktopContent]}>
-        <View style={[styles.hero, isDesktop && styles.desktopHero]}>
-          <Text style={[styles.brand, isDesktop && styles.desktopBrand]}>
+      <View
+        style={[
+          styles.content,
+          isDesktop && styles.desktopContent,
+          isCompact && styles.compactContent,
+        ]}
+      >
+        <View
+          style={[
+            styles.hero,
+            isDesktop && styles.desktopHero,
+            isCompact && styles.compactHero,
+          ]}
+        >
+          <Text
+            style={[
+              styles.brand,
+              isDesktop && styles.desktopBrand,
+              isCompact && styles.compactBrand,
+            ]}
+          >
             Eternita
           </Text>
-          <Text style={styles.title}>Register</Text>
+          <Text style={[styles.title, isCompact && styles.compactTitle]}>
+            Register
+          </Text>
           {isDesktop ? (
             <>
               <Text style={styles.note}>
@@ -68,21 +105,26 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
                 backup if your face not recognized.
               </Text>
               <Text style={styles.demoNote}>
-                Frontend preview only. No account is created or sent to a
-                server.
+                Your account is created with Firebase secure sign-in.
               </Text>
             </>
           ) : null}
         </View>
 
-        <View style={[styles.form, isDesktop && styles.desktopForm]}>
+        <View
+          style={[
+            styles.form,
+            isDesktop && styles.desktopForm,
+            isCompact && styles.compactForm,
+          ]}
+        >
           <TextInput
             accessibilityLabel="Username"
             autoCapitalize="words"
             onChangeText={setUsername}
             placeholder="Username"
             placeholderTextColor="#FFF1DD"
-            style={styles.input}
+            style={[styles.input, isCompact && styles.compactInput]}
             value={username}
           />
           <TextInput
@@ -93,10 +135,15 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
             onChangeText={setEmail}
             placeholder="Email"
             placeholderTextColor="#FFF1DD"
-            style={styles.input}
+            style={[styles.input, isCompact && styles.compactInput]}
             value={email}
           />
-          <View style={styles.passwordField}>
+          <View
+            style={[
+              styles.passwordField,
+              isCompact && styles.compactPasswordField,
+            ]}
+          >
             <TextInput
               accessibilityLabel="Password (Atleast 8 Character)"
               autoComplete="new-password"
@@ -104,7 +151,10 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
               placeholder="Password (Atleast 8 Character)"
               placeholderTextColor="#FFF1DD"
               secureTextEntry={!showPasswords}
-              style={styles.passwordInput}
+              style={[
+                styles.passwordInput,
+                isCompact && styles.compactPasswordInput,
+              ]}
               value={password}
             />
             <Pressable
@@ -112,14 +162,22 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
               accessibilityLabel={
                 showPasswords ? "Hide passwords" : "Show passwords"
               }
+              hitSlop={8}
               onPress={() => setShowPasswords((visible) => !visible)}
             >
-              <Text style={styles.showLabel}>
-                {showPasswords ? "Hide" : "Show"}
-              </Text>
+              <Feather
+                name={showPasswords ? "eye-off" : "eye"}
+                size={20}
+                color="#FFF7EA"
+              />
             </Pressable>
           </View>
-          <View style={styles.passwordField}>
+          <View
+            style={[
+              styles.passwordField,
+              isCompact && styles.compactPasswordField,
+            ]}
+          >
             <TextInput
               accessibilityLabel="Confirm password"
               autoComplete="new-password"
@@ -127,22 +185,31 @@ export function RegisterScreen({ onCreateAccount, onBack }: Props) {
               placeholder="Confirm password"
               placeholderTextColor="#FFF1DD"
               secureTextEntry={!showPasswords}
-              style={styles.passwordInput}
+              style={[
+                styles.passwordInput,
+                isCompact && styles.compactPasswordInput,
+              ]}
               value={confirmPassword}
             />
           </View>
 
           {!isDesktop ? (
-            <Text style={styles.note}>
+            <Text style={[styles.note, isCompact && styles.compactNote]}>
               Use an invented name and fiction details. The PIN is only a
               backup if your face not recognized.
             </Text>
           ) : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <EternitaButton title="Create Account" onPress={submit} />
+          <EternitaButton
+            title={isSubmitting ? "Creating account..." : "Create Account"}
+            onPress={submit}
+            disabled={isSubmitting}
+          />
           {!isDesktop ? (
-            <Text style={styles.demoNote}>
-              Frontend preview only. No account is created or sent to a server.
+            <Text
+              style={[styles.demoNote, isCompact && styles.compactDemoNote]}
+            >
+              Your account is created with Firebase secure sign-in.
             </Text>
           ) : null}
           <EternitaButton title="Back" onPress={onBack} variant="secondary" />
@@ -165,11 +232,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 72,
   },
+  compactContent: {
+    gap: 8,
+  },
   hero: {
     gap: 14,
   },
   desktopHero: {
     flex: 1,
+  },
+  compactHero: {
+    gap: 8,
   },
   form: {
     gap: 14,
@@ -178,9 +251,12 @@ const styles = StyleSheet.create({
     flex: 1,
     maxWidth: 560,
   },
+  compactForm: {
+    gap: 8,
+  },
   brand: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 54,
     textAlign: "center",
   },
@@ -188,12 +264,19 @@ const styles = StyleSheet.create({
     fontSize: 80,
     textAlign: "left",
   },
+  compactBrand: {
+    fontSize: 46,
+  },
   title: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 22,
     marginBottom: 8,
     textAlign: "center",
+  },
+  compactTitle: {
+    fontSize: 18,
+    marginBottom: 0,
   },
   input: {
     minHeight: 52,
@@ -205,6 +288,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingHorizontal: 16,
   },
+  compactInput: {
+    minHeight: 44,
+    fontSize: 14,
+  },
   passwordField: {
     minHeight: 52,
     flexDirection: "row",
@@ -215,6 +302,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#B8752F",
     paddingHorizontal: 16,
   },
+  compactPasswordField: {
+    minHeight: 44,
+  },
   passwordInput: {
     flex: 1,
     flexShrink: 1,
@@ -223,17 +313,19 @@ const styles = StyleSheet.create({
     color: "#FFF7EA",
     fontSize: 14,
   },
-  showLabel: {
-    color: "#FFF7EA",
-    fontSize: 13,
-    fontWeight: "600",
-    paddingLeft: 8,
+  compactPasswordInput: {
+    minHeight: 40,
+    fontSize: 12,
   },
   note: {
     color: "#FFF1DD",
     fontFamily: "Georgia",
     fontSize: 14,
     lineHeight: 19,
+  },
+  compactNote: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   error: {
     color: "#FFD1C8",
@@ -245,5 +337,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     textAlign: "center",
+  },
+  compactDemoNote: {
+    fontSize: 11,
+    lineHeight: 14,
   },
 });

@@ -17,7 +17,6 @@ export default function VerifyEmailRoute() {
           params: { username, email },
         })
       }
-      onBack={() => router.back()}
     />
   );
 }

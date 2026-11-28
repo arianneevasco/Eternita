@@ -4,22 +4,27 @@ type Props = {
   title: string;
   onPress: () => void;
   variant?: "primary" | "secondary";
+  disabled?: boolean;
 };
 
 export function EternitaButton({
   title,
   onPress,
   variant = "primary",
+  disabled = false,
 }: Props) {
   const isPrimary = variant === "primary";
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled, busy: disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
         isPrimary ? styles.primary : styles.secondary,
+        disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
@@ -40,7 +45,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   primary: {
-    borderColor: "#A65D19",
+    borderColor: "#A95F1C",
     backgroundColor: "#B96B1D",
   },
   secondary: {
@@ -49,7 +54,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: "#FFF7EA",
-    fontFamily: "Georgia",
+    fontFamily: "EternitaDisplay",
     fontSize: 18,
     textAlign: "center",
   },
@@ -58,5 +63,8 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.78,
+  },
+  disabled: {
+    opacity: 0.6,
   },
 });

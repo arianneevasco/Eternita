@@ -13,6 +13,10 @@ type Props = {
 export function EternitaFrame({ children }: Props) {
   const { height, width } = useWindowDimensions();
   const isDesktop = width >= 900;
+  const frameHeight = Math.max(
+    height - (isDesktop ? 76 : 60),
+    480
+  );
 
   return (
     <View style={styles.screen}>
@@ -26,8 +30,9 @@ export function EternitaFrame({ children }: Props) {
         <View
           style={[
             styles.outerFrame,
+            { height: frameHeight, flexGrow: 0 },
             isDesktop
-              ? { minHeight: Math.max(height - 48, 640) }
+              ? null
               : styles.mobileOuterFrame,
           ]}
         >
@@ -37,7 +42,7 @@ export function EternitaFrame({ children }: Props) {
               !isDesktop && styles.mobileInnerFrame,
             ]}
           >
-            {children}
+            <View style={styles.contentViewport}>{children}</View>
           </View>
         </View>
       </ScrollView>
@@ -55,7 +60,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 16,
   },
   desktopScrollContent: {
     paddingHorizontal: 28,
@@ -67,24 +72,29 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 12,
     borderWidth: 2,
-    borderColor: "#92551F",
-    backgroundColor: "#46290F",
+    borderColor: "#A95F1C",
+    backgroundColor: "#48280E",
   },
   innerFrame: {
-    flexGrow: 1,
+    flex: 1,
+    minHeight: 0,
     justifyContent: "center",
     padding: 40,
     borderWidth: 2,
-    borderColor: "#C17C38",
+    borderColor: "#D18232",
+  },
+  contentViewport: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   mobileOuterFrame: {
     maxWidth: 480,
-    minHeight: 680,
-    flexGrow: 0,
     padding: 8,
   },
   mobileInnerFrame: {
-    minHeight: 660,
     padding: 22,
   },
 });

@@ -40,6 +40,7 @@ export type EditEntryInput = Partial<EntryContent>;
 
 export interface DiaryEntry extends EntryContent {
   id: string;
+  entryId?: string;
   finalText: string;
   isHidden: boolean;
   currentVersion: number;
@@ -74,6 +75,16 @@ export function listEntries(
   idToken: string
 ): Promise<{ entries: DiaryEntry[] }> {
   return apiRequest<{ entries: DiaryEntry[] }>("/entries", { idToken });
+}
+
+export function publishEntry(
+  idToken: string,
+  entryId: string
+): Promise<DiaryEntry> {
+  return apiRequest<DiaryEntry>(
+    `/entries/${encodeURIComponent(entryId)}/publish`,
+    { method: "POST", idToken },
+  );
 }
 
 export function getEntry(
